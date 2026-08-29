@@ -28,17 +28,23 @@ async def _invoke(backend, request: LLMRequest, timeout_s: float = 30.0) -> LLMR
 
 @router.post("/v1/chat/completions", response_model=None)
 async def chat_completions(request: Request, body: LLMRequest) -> LLMResponse | StreamingResponse:
-    from gateway.main import circuit_breakers, factory, router_instance
+    from gateway.main import circuit_breakers, factory, registry, router_instance
 
     trace_id = request.state.trace_id
     start = time.time()
 
+    # If the model name matches a registered model exactly, use it directly.
+    # Otherwise, treat it as a routing hint and let the router decide.
     try:
-        decision = await router_instance.route(body)
-    except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e)) from e
+        explicit_model = registry.get(body.model)
+        models_to_try = [explicit_model]
+    except KeyError:
+        try:
+            decision = await router_instance.route(body)
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail=str(e)) from e
+        models_to_try = [decision.model] + decision.fallback_chain
 
-    models_to_try = [decision.model] + decision.fallback_chain
     last_error: Exception | None = None
 
     for model in models_to_try:
@@ -74,12 +80,14 @@ async def chat_completions(request: Request, body: LLMRequest) -> LLMResponse | 
 
             response.trace_id = trace_id
             response.routing_metadata["model_selected"] = model.name
-            response.routing_metadata["fallback"] = model.name != decision.model.name
+            response.routing_metadata["fallback"] = model.name != models_to_try[0].name
             return response
 
         except Exception as e:
+            import traceback
             cb.record_failure()
             last_error = e
+            print(f"Backend {model.name} failed: {type(e).__name__}: {e}\n{traceback.format_exc()}")
             request_total.labels(model=model.name, status="error").inc()
             continue
 

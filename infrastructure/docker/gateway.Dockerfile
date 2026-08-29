@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -e .
 
 COPY gateway/ gateway/
 COPY serving/ serving/
+COPY observability/ observability/
 
 EXPOSE 8000
 

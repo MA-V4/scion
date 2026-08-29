@@ -23,7 +23,7 @@ models:
   - name: local
     provider: ollama
     model_id: llama3.2:3b
-    endpoint: http://localhost:11434
+    endpoint: http://scion-ollama:11434
     context_length: 32768
     cost_per_1m_input: 0.0
     cost_per_1m_output: 0.0
