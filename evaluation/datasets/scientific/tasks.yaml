@@ -1,0 +1,21 @@
+tasks:
+  - id: sci_001
+    description: >
+      Search arXiv for papers published in 2024 on "protein structure prediction".
+      Retrieve the abstracts of the top 3 results and identify any methodological disagreements.
+    allowed_tools: [arxiv, calculator]
+    expected:
+      papers_retrieved: 3
+      disagreements_identified: true
+    max_steps: 10
+    evaluation_criteria: [tool_selection, groundedness, final_answer_correctness]
+
+  - id: sci_002
+    description: >
+      Find the molecular weight of caffeine (C8H10N4O2) using atomic weights
+      (C=12.011, H=1.008, N=14.007, O=15.999) and confirm the result.
+    allowed_tools: [calculator]
+    expected:
+      molecular_weight_approx: 194.19
+    max_steps: 4
+    evaluation_criteria: [tool_selection, final_answer_correctness]

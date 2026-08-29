@@ -1,0 +1,31 @@
+tasks:
+  - id: general_001
+    description: >
+      Find all TODO comments in the repository at /tmp/scion-sandbox/sample-repo
+      and list them with their file path and line number.
+    allowed_tools: [filesystem]
+    expected:
+      todos_found: 4
+    max_steps: 8
+    evaluation_criteria: [tool_selection, trajectory_efficiency, final_answer_correctness]
+
+  - id: general_002
+    description: >
+      Search for recent papers on "attention mechanisms in transformers" on arXiv
+      and summarise the key contributions of the top 3 results.
+    allowed_tools: [arxiv]
+    expected:
+      papers_found: 3
+      summary_present: true
+    max_steps: 6
+    evaluation_criteria: [tool_selection, final_answer_correctness, groundedness]
+
+  - id: general_003
+    description: >
+      Calculate the mean and standard deviation of the following values: 14.2, 18.7, 11.3, 22.1, 9.8
+    allowed_tools: [calculator]
+    expected:
+      mean: 15.22
+      std_dev_approx: 4.6
+    max_steps: 4
+    evaluation_criteria: [tool_selection, final_answer_correctness]

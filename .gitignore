@@ -1,0 +1,70 @@
+# PYTHON
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.eggs/
+*.egg
+
+# ENVIRONMENT
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.cursorrules
+
+# TESTING
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# BENCHMARK RESULTS
+benchmarks/results/*.json
+benchmarks/results/*.csv
+
+# LOGS
+*.log
+logs/
+
+# DOCKER
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# WSL
+*.Zone.Identifier
+
+# HUGGINGFACE / MODEL CACHE
+.cache/
+*.bin
+*.safetensors
+*.gguf
+
+# VLLM
+ray_results/
+
+# NODE (if frontend added later)
+node_modules/
+.next/
+
+# SECRETS
+*.pem
+*.key
+*.p12

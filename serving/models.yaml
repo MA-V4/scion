@@ -1,0 +1,31 @@
+models:
+  - name: fast
+    provider: groq
+    model_id: openai/gpt-oss-20b
+    context_length: 131072
+    cost_per_1m_input: 0.0
+    cost_per_1m_output: 0.0
+    capabilities:
+      - chat
+      - function_calling
+
+  - name: reasoning
+    provider: groq
+    model_id: openai/gpt-oss-120b
+    context_length: 131072
+    cost_per_1m_input: 0.0
+    cost_per_1m_output: 0.0
+    capabilities:
+      - chat
+      - function_calling
+      - reasoning
+
+  - name: local
+    provider: ollama
+    model_id: llama3.2:3b
+    endpoint: http://localhost:11434
+    context_length: 32768
+    cost_per_1m_input: 0.0
+    cost_per_1m_output: 0.0
+    capabilities:
+      - chat
