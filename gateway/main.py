@@ -12,6 +12,7 @@ from gateway.config import settings
 from gateway.middleware.auth import APIKeyMiddleware
 from gateway.middleware.rate_limit import RateLimitMiddleware
 from gateway.middleware.tracing import TracingMiddleware
+from gateway.reliability.circuit_breaker import CircuitBreakerRegistry
 from gateway.routing.registry import ModelRegistry
 from gateway.routing.router import ModelRouter
 from gateway.routing.strategies.round_robin import RoundRobinStrategy
@@ -22,6 +23,7 @@ log = structlog.get_logger()
 registry = ModelRegistry()
 factory = BackendFactory()
 router_instance = ModelRouter(registry=registry, strategy=RoundRobinStrategy())
+circuit_breakers = CircuitBreakerRegistry()
 
 
 @asynccontextmanager
@@ -64,4 +66,9 @@ app.mount("/metrics", metrics_app)
 @app.get("/health")
 async def health() -> dict:
     models = [{"name": m.name, "healthy": m.health.is_healthy} for m in registry.all()]
-    return {"status": "ok", "version": "0.1.0", "models": models}
+    return {
+        "status": "ok",
+        "version": "0.1.0",
+        "models": models,
+        "circuit_breakers": circuit_breakers.status(),
+    }

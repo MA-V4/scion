@@ -51,3 +51,17 @@ class CircuitBreaker:
 
     def is_available(self) -> bool:
         return self.state in (CircuitState.CLOSED, CircuitState.HALF_OPEN)
+
+class CircuitBreakerRegistry:
+    """One circuit breaker per model backend, created on first access."""
+
+    def __init__(self) -> None:
+        self._breakers: dict[str, CircuitBreaker] = {}
+
+    def get(self, name: str) -> CircuitBreaker:
+        if name not in self._breakers:
+            self._breakers[name] = CircuitBreaker(name=name)
+        return self._breakers[name]
+
+    def status(self) -> dict[str, str]:
+        return {name: cb.state for name, cb in self._breakers.items()}
