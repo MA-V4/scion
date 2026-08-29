@@ -18,7 +18,7 @@ async def chat_completions(request: Request, body: LLMRequest) -> LLMResponse | 
     try:
         decision = await router_instance.route(body)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e)) from e
 
     backend = factory.get(decision.model)
     body.metadata["trace_id"] = trace_id

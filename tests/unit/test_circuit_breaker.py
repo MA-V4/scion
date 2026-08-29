@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-import pytest
+
 from gateway.reliability.circuit_breaker import CircuitBreaker, CircuitState
 
 

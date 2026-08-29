@@ -23,9 +23,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = Field(
         default="http://localhost:11434", validation_alias="OLLAMA_BASE_URL"
     )
-    vllm_base_url: str = Field(
-        default="http://localhost:8080", validation_alias="VLLM_BASE_URL"
-    )
+    vllm_base_url: str = Field(default="http://localhost:8080", validation_alias="VLLM_BASE_URL")
 
     otel_endpoint: str = Field(
         default="http://localhost:4317", validation_alias="OTEL_EXPORTER_OTLP_ENDPOINT"

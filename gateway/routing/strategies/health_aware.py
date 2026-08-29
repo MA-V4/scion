@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from gateway.routing.router import RoutingContext, RoutingDecision, RouterStrategy
+from gateway.routing.router import RouterStrategy, RoutingContext, RoutingDecision
 
 ERROR_RATE_THRESHOLD = 0.10
 LATENCY_P95_THRESHOLD_MS = 3000.0
@@ -18,7 +18,8 @@ class HealthAwareStrategy(RouterStrategy):
 
     async def route(self, ctx: RoutingContext) -> RoutingDecision:
         healthy = [
-            m for m in ctx.available_models
+            m
+            for m in ctx.available_models
             if m.health.error_rate < ERROR_RATE_THRESHOLD
             and m.health.latency_p95_ms < LATENCY_P95_THRESHOLD_MS
         ]

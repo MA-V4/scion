@@ -6,10 +6,10 @@ from typing import Any
 
 @dataclass
 class TrajectoryScore:
-    tool_selection: float       # Did the agent select the right tools?
-    path_efficiency: float      # Did it avoid unnecessary steps?
-    error_recovery: float       # Did it recover from mistakes?
-    final_correctness: float    # Did it produce the right final answer?
+    tool_selection: float  # Did the agent select the right tools?
+    path_efficiency: float  # Did it avoid unnecessary steps?
+    error_recovery: float  # Did it recover from mistakes?
+    final_correctness: float  # Did it produce the right final answer?
 
     @property
     def aggregate(self) -> float:

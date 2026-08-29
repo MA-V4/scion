@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import random
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -28,7 +29,7 @@ async def with_retry(
             last_exc = exc
             if attempt == max_attempts - 1:
                 break
-            delay = min(max_delay_s, base_delay_s * (2 ** attempt))
+            delay = min(max_delay_s, base_delay_s * (2**attempt))
             jitter = random.uniform(0, delay)
             await asyncio.sleep(jitter)
 

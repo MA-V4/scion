@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 
-from gateway.routing.router import RoutingContext, RoutingDecision, RouterStrategy
+from gateway.routing.router import RouterStrategy, RoutingContext, RoutingDecision
 
 
 class RoundRobinStrategy(RouterStrategy):
@@ -22,7 +22,7 @@ class RoundRobinStrategy(RouterStrategy):
 
         idx = next(self._counter) % len(models)
         selected = models[idx]
-        fallback = models[idx + 1:] + models[:idx]
+        fallback = models[idx + 1 :] + models[:idx]
 
         return RoutingDecision(
             model=selected,

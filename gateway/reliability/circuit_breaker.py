@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import time
-from enum import StrEnum
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 
 class CircuitState(StrEnum):
@@ -31,9 +31,12 @@ class CircuitBreaker:
 
     @property
     def state(self) -> CircuitState:
-        if self._state == CircuitState.OPEN:
-            if time.time() - self._opened_at >= self.recovery_timeout_s:
-                self._state = CircuitState.HALF_OPEN
+        if (
+            self._state == CircuitState.OPEN
+            and time.time() - self._opened_at >= self.recovery_timeout_s
+        ):
+            self._state = CircuitState.HALF_OPEN
+            self._state = CircuitState.HALF_OPEN
         return self._state
 
     def record_success(self) -> None:

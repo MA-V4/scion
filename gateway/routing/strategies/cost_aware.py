@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from gateway.routing.router import RoutingContext, RoutingDecision, RouterStrategy
+from gateway.routing.router import RouterStrategy, RoutingContext, RoutingDecision
 
 
 class CostAwareStrategy(RouterStrategy):
@@ -19,9 +19,7 @@ class CostAwareStrategy(RouterStrategy):
 
     async def route(self, ctx: RoutingContext) -> RoutingDecision:
         task = ctx.task_type or self._classify_task(ctx.request.messages[-1].content)
-        sorted_by_cost = sorted(
-            ctx.available_models, key=lambda m: m.cost_per_1m_input
-        )
+        sorted_by_cost = sorted(ctx.available_models, key=lambda m: m.cost_per_1m_input)
 
         if task in self.REASONING_TASK_TYPES:
             # TODO: sort by capability score, not just cost

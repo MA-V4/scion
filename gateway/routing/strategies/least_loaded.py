@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from gateway.routing.router import RoutingContext, RoutingDecision, RouterStrategy
+from gateway.routing.router import RouterStrategy, RoutingContext, RoutingDecision
 
 
 class LeastLoadedStrategy(RouterStrategy):

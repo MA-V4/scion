@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 async def with_timeout(fn: Callable[..., Any], *args: Any, timeout_s: float, **kwargs: Any) -> Any:

@@ -1,11 +1,6 @@
 from __future__ import annotations
 
-import asyncio
-import time
 from dataclasses import dataclass, field
-from typing import Any
-
-import httpx
 
 
 @dataclass
@@ -53,7 +48,9 @@ class BenchmarkHarness:
             ]:
                 result = await self._run_level(concurrency, prompt_type, prompt)
                 self._results.append(result)
-                print(f"  concurrency={concurrency} prompt={prompt_type} -> p95={result.latency_p95_ms:.0f}ms tps={result.tokens_per_sec:.1f}")
+                print(
+                    f"  concurrency={concurrency} prompt={prompt_type} -> p95={result.latency_p95_ms:.0f}ms tps={result.tokens_per_sec:.1f}"
+                )
 
         return self._results
 

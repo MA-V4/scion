@@ -60,5 +60,5 @@ Final answer: {final_answer}
         """Compute fraction agreement between judge and human labels."""
         if not judgements:
             return 0.0
-        agreed = sum(j.correct == gt for j, gt in zip(judgements, ground_truth))
+        agreed = sum(j.correct == gt for j, gt in zip(judgements, ground_truth, strict=True))
         return agreed / len(judgements)

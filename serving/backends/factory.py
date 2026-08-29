@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from gateway.config import settings 
+from gateway.config import settings
 from gateway.models.registry import ModelProvider, ModelSpec
 from serving.backends.base import Backend
 from serving.backends.groq import GroqBackend
 from serving.backends.ollama import OllamaBackend
+
 
 class BackendFactory:
     """

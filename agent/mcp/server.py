@@ -17,7 +17,9 @@ class MCPServer:
         # TODO: filter tools by agent_role permissions
         return self._registry.list_schemas()
 
-    async def call_tool(self, tool_name: str, input_data: dict, agent_role: str | None = None) -> dict:
+    async def call_tool(
+        self, tool_name: str, input_data: dict, agent_role: str | None = None
+    ) -> dict:
         # TODO:
         # 1. Check agent_role has permission for tool_name
         # 2. Deserialise input_data via tool.input_schema

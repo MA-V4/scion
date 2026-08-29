@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from agent.models.agent import AgentConfig, AgentStep, AgentTrace
@@ -33,7 +33,13 @@ class AgentLoop:
 
             if step.tool_call:
                 result = await self._execute_tool(step.tool_call)
-                history.append({"role": "tool", "content": str(result), "tool_call_id": step.tool_call.get("id", "")})
+                history.append(
+                    {
+                        "role": "tool",
+                        "content": str(result),
+                        "tool_call_id": step.tool_call.get("id", ""),
+                    }
+                )
                 trace.tool_calls_made += 1
 
             if trace.total_tokens >= self.config.token_budget:

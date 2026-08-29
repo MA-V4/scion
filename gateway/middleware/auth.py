@@ -21,7 +21,9 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
-            return JSONResponse({"error": "Missing or invalid Authorization header"}, status_code=401)
+            return JSONResponse(
+                {"error": "Missing or invalid Authorization header"}, status_code=401
+            )
 
         key = auth.removeprefix("Bearer ").strip()
         if key not in self._valid_keys:

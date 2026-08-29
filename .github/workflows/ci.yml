@@ -18,6 +18,8 @@ jobs:
       - run: pip install ruff mypy
       - run: ruff check .
       - run: ruff format --check .
+      - run: pip install -e ".[dev]"
+      - run: pytest tests/unit tests/integration -v
 
   test:
     name: Unit + Integration Tests

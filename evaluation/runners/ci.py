@@ -23,7 +23,7 @@ def run_ci(baseline_path: str) -> None:
         # TODO: run benchmark and write result as baseline
         sys.exit(0)
 
-    baseline = json.loads(baseline_file.read_text())
+    _ = json.loads(baseline_file.read_text())
     # TODO: run current benchmark, compare against baseline, enforce THRESHOLDS
     # Print diff report, exit 1 on regression
     raise NotImplementedError
@@ -31,6 +31,7 @@ def run_ci(baseline_path: str) -> None:
 
 if __name__ == "__main__":
     import argparse
+
     p = argparse.ArgumentParser()
     p.add_argument("--baseline", required=True)
     args = p.parse_args()

@@ -7,13 +7,12 @@ from collections.abc import AsyncIterator
 
 import httpx
 
-from gateway.models.request import LLMRequest, LLMResponse, Message, Role, StreamChunk, Usage
 from gateway.models.registry import ModelSpec
+from gateway.models.request import LLMRequest, LLMResponse, Message, Role, StreamChunk, Usage
 from serving.backends.base import Backend
 
 
 class GroqBackend(Backend):
-
     BASE_URL = "https://api.groq.com/openai/v1"
 
     def __init__(self, spec: ModelSpec, api_key: str) -> None:
@@ -90,11 +89,13 @@ class GroqBackend(Backend):
                 yield StreamChunk(
                     id=data.get("id", f"chatcmpl-{uuid.uuid4().hex[:8]}"),
                     model=request.model,
-                    choices=[{
-                        "index": 0,
-                        "delta": {"content": delta.get("content", "")},
-                        "finish_reason": choice.get("finish_reason"),
-                    }],
+                    choices=[
+                        {
+                            "index": 0,
+                            "delta": {"content": delta.get("content", "")},
+                            "finish_reason": choice.get("finish_reason"),
+                        }
+                    ],
                 )
 
     async def health_check(self) -> bool:

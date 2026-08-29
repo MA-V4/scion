@@ -4,9 +4,9 @@ import re
 
 # Patterns that indicate a potential secret or sensitive value
 SECRET_PATTERNS = [
-    re.compile(r"[A-Z0-9]{20,}", re.IGNORECASE),        # Generic long uppercase tokens
-    re.compile(r"sk-[a-zA-Z0-9]{32,}"),                  # OpenAI-style keys
-    re.compile(r"ghp_[a-zA-Z0-9]{36}"),                  # GitHub personal access tokens
+    re.compile(r"[A-Z0-9]{20,}", re.IGNORECASE),  # Generic long uppercase tokens
+    re.compile(r"sk-[a-zA-Z0-9]{32,}"),  # OpenAI-style keys
+    re.compile(r"ghp_[a-zA-Z0-9]{36}"),  # GitHub personal access tokens
     re.compile(r"(AWS_|GROQ_|ANTHROPIC_)[A-Z_]+=\S+"),  # Env var patterns
 ]
 

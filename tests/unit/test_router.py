@@ -1,10 +1,6 @@
 from __future__ import annotations
 
 import pytest
-from gateway.routing.registry import ModelRegistry
-from gateway.routing.router import ModelRouter, RoutingContext
-from gateway.routing.strategies.round_robin import RoundRobinStrategy
-from gateway.routing.strategies.cost_aware import CostAwareStrategy
 
 
 @pytest.mark.asyncio

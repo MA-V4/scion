@@ -6,13 +6,12 @@ from collections.abc import AsyncIterator
 
 import httpx
 
-from gateway.models.request import LLMRequest, LLMResponse, Message, Role, StreamChunk, Usage
 from gateway.models.registry import ModelSpec
+from gateway.models.request import LLMRequest, LLMResponse, Message, Role, StreamChunk, Usage
 from serving.backends.base import Backend
 
 
 class OllamaBackend(Backend):
-
     def __init__(self, spec: ModelSpec) -> None:
         self._spec = spec
         self._base_url = spec.endpoint or "http://localhost:11434"
@@ -73,15 +72,18 @@ class OllamaBackend(Backend):
                 if not line:
                     continue
                 import json
+
                 data = json.loads(line)
                 yield StreamChunk(
                     id=f"chatcmpl-{uuid.uuid4().hex[:8]}",
                     model=request.model,
-                    choices=[{
-                        "index": 0,
-                        "delta": {"content": data.get("message", {}).get("content", "")},
-                        "finish_reason": "stop" if data.get("done") else None,
-                    }],
+                    choices=[
+                        {
+                            "index": 0,
+                            "delta": {"content": data.get("message", {}).get("content", "")},
+                            "finish_reason": "stop" if data.get("done") else None,
+                        }
+                    ],
                 )
 
     async def health_check(self) -> bool:
