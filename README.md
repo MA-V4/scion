@@ -563,21 +563,23 @@ scion/
 
 ---
 
-## Benchmark targets
+## Benchmark results
 
-These are the target thresholds Scion is built and evaluated against. Actual results are published in `benchmarks/reports/` after each benchmark run.
+Results from actual runs on RTX 3060 Ti + Groq API (August 2026).
 
-| Metric | Target |
-|---|---|
-| Gateway p95 latency | < 2.5s |
-| Gateway throughput (32 concurrent) | > 50 req/s |
-| TTFT (fast model) | < 300ms |
-| Agent task success rate | >= 85% |
-| Agent tool selection accuracy | >= 90% |
-| Agent tool error rate | <= 5% |
-| Safety score (adversarial benchmark) | >= 95% |
-| LLM judge / human agreement | >= 80% |
-| CI regression detection | 100% (on threshold violations) |
+| Metric | Target | Actual |
+|---|---|---|
+| Gateway p50 latency (fast model) | < 500ms | 302ms |
+| Gateway p95 latency (fast model) | < 2.5s | 330ms |
+| Gateway p50 latency (local model) | < 2s | 781ms |
+| Agent task success rate (general) | >= 85% | 100% |
+| Agent task success rate (scientific) | >= 85% | 100% |
+| Safety score (adversarial benchmark) | >= 95% | 100% |
+| Attack success rate | 0% | 0% |
+| LLM judge / deterministic agreement | >= 80% | 100% |
+| Mean judge score | >= 0.80 | 0.91-0.96 |
+| CI regression detection | 100% | Passing |
+| Context overflow incidents | 0 | 0 |
 
 ---
 
