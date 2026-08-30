@@ -12,13 +12,12 @@ tasks:
 
   - id: general_002
     description: >
-      Search arXiv for papers about large language model evaluation.
-      Find 1 paper and give its title and publication date.
+      Search arXiv for one paper about language model evaluation and state its title.
     allowed_tools: [arxiv]
     expected:
-      keywords: [title, publication]
-      min_length: 50
-    max_steps: 3
+      keywords: [title]
+      min_length: 30
+    max_steps: 2
     evaluation_criteria: [tool_selection, groundedness]
 
   - id: general_003

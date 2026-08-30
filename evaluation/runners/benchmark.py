@@ -20,6 +20,8 @@ from agent.tools.scientific.arxiv import ArxivTool
 from agent.tools.search import SearchTool
 from agent.tools.github import GitHubTool
 
+from evaluation.metrics.trajectory import TrajectoryScorer
+
 log = structlog.get_logger()
 
 
@@ -43,6 +45,7 @@ class TaskOutcome:
     latency_ms: float
     termination_reason: str
     final_answer: str
+    trajectory_score: float = 0.0
     error: str | None = None
 
 
@@ -89,7 +92,7 @@ class BenchmarkResult:
         print(f"{chr(61)*50}")
         for o in self.outcomes:
             status = "PASS" if o.success else "FAIL"
-            print(f"  [{status}] {o.task_id} | steps={o.steps_taken} tokens={o.tokens_used} latency={o.latency_ms:.0f}ms")
+            print(f"  [{status}] {o.task_id} | steps={o.steps_taken} tokens={o.tokens_used} traj={o.trajectory_score:.2f} latency={o.latency_ms:.0f}ms")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -129,6 +132,7 @@ class BenchmarkRunner:
             raise ValueError(f"Unknown suite. Choose from: {list(self.SUITE_PATHS)}")
         self._suite = suite
         self._tasks: list[BenchmarkTask] = []
+        self._scorer = TrajectoryScorer()
 
     def load_tasks(self) -> None:
         path = Path(self.SUITE_PATHS[self._suite])
@@ -164,7 +168,21 @@ class BenchmarkRunner:
         try:
             trace = await agent.run(task.description)
             latency_ms = (time.time() - start) * 1000
+
             success = self._evaluate(trace.final_answer or "", task.expected)
+
+            step_dicts = [
+                {"tool_call": s.tool_call, "is_terminal": s.is_terminal}
+                for s in trace.steps
+            ]
+            traj_score = self._scorer.score(
+                steps=step_dicts,
+                tool_calls_made=trace.tool_calls_made,
+                termination_reason=trace.termination_reason,
+                final_answer=trace.final_answer or "",
+                expected=task.expected,
+            )
+
             return TaskOutcome(
                 task_id=task.id,
                 success=success,
@@ -174,6 +192,7 @@ class BenchmarkRunner:
                 latency_ms=latency_ms,
                 termination_reason=trace.termination_reason,
                 final_answer=trace.final_answer or "",
+                trajectory_score=traj_score.aggregate,
             )
         except Exception as e:
             latency_ms = (time.time() - start) * 1000
@@ -206,7 +225,8 @@ class BenchmarkRunner:
                 return False
 
         if "contains_number" in expected:
-            cleaned = answer.replace(",", "").replace("\\,", "")
+            import re
+            cleaned = answer.replace(",", "").replace("\\,", "").replace("{,}", "").replace("{.", ".")
             numbers = re.findall(r"\d+\.?\d*", cleaned)
             found = [float(n) for n in numbers]
             target = float(expected["contains_number"])
