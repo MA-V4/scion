@@ -16,7 +16,7 @@ class AgentConfig:
     system_prompt: str = (
         "You are a helpful, precise assistant. "
         "When you need to use a tool, respond with:\n"
-        "TOOL_CALL: {\"name\": \"tool_name\", \"input\": {...}}\n"
+        'TOOL_CALL: {"name": "tool_name", "input": {...}}\n'
         "When you have a final answer, respond normally without TOOL_CALL."
     )
 

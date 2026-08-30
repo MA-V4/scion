@@ -84,7 +84,7 @@ class BenchmarkResult:
         return errors / len(self.outcomes)
 
     def print_summary(self) -> None:
-        print(f"\n{chr(61)*50}")
+        print(f"\n{chr(61) * 50}")
         print(f"Benchmark: {self.suite}")
         print(f"Tasks run: {len(self.outcomes)}")
         print(f"Success rate: {self.task_success_rate:.1%}")
@@ -94,18 +94,20 @@ class BenchmarkResult:
 
         judge_results = [o for o in self.outcomes if o.judge_correct is not None]
         if judge_results:
-            agreement = sum(
-                o.judge_correct == o.success for o in judge_results
-            ) / len(judge_results)
+            agreement = sum(o.judge_correct == o.success for o in judge_results) / len(
+                judge_results
+            )
             mean_judge = sum(o.judge_score for o in judge_results) / len(judge_results)
             print(f"Judge mean score: {mean_judge:.2f}")
             print(f"Judge/deterministic agreement: {agreement:.1%}")
 
-        print(f"{chr(61)*50}")
+        print(f"{chr(61) * 50}")
         for o in self.outcomes:
             status = "PASS" if o.success else "FAIL"
             judge = f"judge={o.judge_score:.2f}" if o.judge_correct is not None else "judge=n/a"
-            print(f"  [{status}] {o.task_id} | steps={o.steps_taken} traj={o.trajectory_score:.2f} {judge} tokens={o.tokens_used}")
+            print(
+                f"  [{status}] {o.task_id} | steps={o.steps_taken} traj={o.trajectory_score:.2f} {judge} tokens={o.tokens_used}"
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -133,7 +135,6 @@ def build_registry() -> ToolRegistry:
 
 
 class BenchmarkRunner:
-
     SUITE_PATHS = {
         "general": "evaluation/datasets/general/tasks.yaml",
         "scientific": "evaluation/datasets/scientific/tasks.yaml",
@@ -164,7 +165,9 @@ class BenchmarkRunner:
             outcome = await self._run_task(task)
             result.outcomes.append(outcome)
             status = "PASS" if outcome.success else "FAIL"
-            log.info("benchmark.task_done", task_id=task.id, status=status, steps=outcome.steps_taken)
+            log.info(
+                "benchmark.task_done", task_id=task.id, status=status, steps=outcome.steps_taken
+            )
         self._save(result)
         return result
 
@@ -186,8 +189,7 @@ class BenchmarkRunner:
             success = self._evaluate(trace.final_answer or "", task.expected)
 
             step_dicts = [
-                {"tool_call": s.tool_call, "is_terminal": s.is_terminal}
-                for s in trace.steps
+                {"tool_call": s.tool_call, "is_terminal": s.is_terminal} for s in trace.steps
             ]
             traj_score = self._scorer.score(
                 steps=step_dicts,

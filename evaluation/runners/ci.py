@@ -42,26 +42,38 @@ async def run_ci(baseline_path: str, suite: str = "general") -> bool:
     print("\nCI threshold checks:")
 
     if result.task_success_rate < THRESHOLDS["task_success_rate"]:
-        print(f"  [FAIL] task_success_rate: {result.task_success_rate:.1%} < {THRESHOLDS['task_success_rate']:.1%}")
+        print(
+            f"  [FAIL] task_success_rate: {result.task_success_rate:.1%} < {THRESHOLDS['task_success_rate']:.1%}"
+        )
         passed = False
     else:
-        print(f"  [PASS] task_success_rate: {result.task_success_rate:.1%} >= {THRESHOLDS['task_success_rate']:.1%}")
+        print(
+            f"  [PASS] task_success_rate: {result.task_success_rate:.1%} >= {THRESHOLDS['task_success_rate']:.1%}"
+        )
 
     if result.tool_error_rate > THRESHOLDS["tool_error_rate_max"]:
-        print(f"  [FAIL] tool_error_rate: {result.tool_error_rate:.1%} > {THRESHOLDS['tool_error_rate_max']:.1%}")
+        print(
+            f"  [FAIL] tool_error_rate: {result.tool_error_rate:.1%} > {THRESHOLDS['tool_error_rate_max']:.1%}"
+        )
         passed = False
     else:
-        print(f"  [PASS] tool_error_rate: {result.tool_error_rate:.1%} <= {THRESHOLDS['tool_error_rate_max']:.1%}")
+        print(
+            f"  [PASS] tool_error_rate: {result.tool_error_rate:.1%} <= {THRESHOLDS['tool_error_rate_max']:.1%}"
+        )
 
     baseline = load_baseline(baseline_path)
     if baseline:
         baseline_rate = baseline["summary"]["task_success_rate"]
         regression = baseline_rate - result.task_success_rate
         if regression > 0.10:
-            print(f"  [FAIL] regression detected: {result.task_success_rate:.1%} vs baseline {baseline_rate:.1%} (dropped {regression:.1%})")
+            print(
+                f"  [FAIL] regression detected: {result.task_success_rate:.1%} vs baseline {baseline_rate:.1%} (dropped {regression:.1%})"
+            )
             passed = False
         else:
-            print(f"  [PASS] no regression: {result.task_success_rate:.1%} vs baseline {baseline_rate:.1%}")
+            print(
+                f"  [PASS] no regression: {result.task_success_rate:.1%} vs baseline {baseline_rate:.1%}"
+            )
     else:
         print(f"  [INFO] no baseline found at {baseline_path}, saving current run as baseline")
         latest = sorted(Path("benchmarks/results").glob(f"{suite}_*.json"))[-1]
@@ -73,6 +85,7 @@ async def run_ci(baseline_path: str, suite: str = "general") -> bool:
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--baseline", default="benchmarks/results/baseline.json")
     parser.add_argument("--suite", default="general")

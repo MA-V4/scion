@@ -50,6 +50,7 @@ class ModelRegistry:
 
     async def _poll_loop(self) -> None:
         import structlog
+
         log = structlog.get_logger()
         while True:
             await asyncio.sleep(self.POLL_INTERVAL)
@@ -67,6 +68,7 @@ class ModelRegistry:
         if spec.provider == ModelProvider.GROQ:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 from gateway.config import settings
+
                 resp = await client.get(
                     "https://api.groq.com/openai/v1/models",
                     headers={"Authorization": f"Bearer {settings.groq_api_key}"},

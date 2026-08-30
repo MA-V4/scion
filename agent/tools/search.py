@@ -45,12 +45,14 @@ class SearchTool(Tool):
         start = time.time()
 
         try:
-            params = urllib.parse.urlencode({
-                "q": input.query,
-                "format": "json",
-                "no_html": 1,
-                "skip_disambig": 1,
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "q": input.query,
+                    "format": "json",
+                    "no_html": 1,
+                    "skip_disambig": 1,
+                }
+            )
             url = f"{self.DDG_URL}?{params}"
 
             req = urllib.request.Request(
@@ -64,23 +66,27 @@ class SearchTool(Tool):
             results = []
 
             if data.get("AbstractText"):
-                results.append({
-                    "title": data.get("Heading", ""),
-                    "url": data.get("AbstractURL", ""),
-                    "snippet": data["AbstractText"],
-                    "source": data.get("AbstractSource", ""),
-                })
+                results.append(
+                    {
+                        "title": data.get("Heading", ""),
+                        "url": data.get("AbstractURL", ""),
+                        "snippet": data["AbstractText"],
+                        "source": data.get("AbstractSource", ""),
+                    }
+                )
 
             for topic in data.get("RelatedTopics", []):
                 if len(results) >= input.max_results:
                     break
                 if isinstance(topic, dict) and topic.get("Text"):
-                    results.append({
-                        "title": topic.get("Text", "")[:80],
-                        "url": topic.get("FirstURL", ""),
-                        "snippet": topic.get("Text", ""),
-                        "source": "DuckDuckGo",
-                    })
+                    results.append(
+                        {
+                            "title": topic.get("Text", "")[:80],
+                            "url": topic.get("FirstURL", ""),
+                            "snippet": topic.get("Text", ""),
+                            "source": "DuckDuckGo",
+                        }
+                    )
 
             if not results:
                 return ToolResult(
@@ -92,7 +98,7 @@ class SearchTool(Tool):
 
             return ToolResult(
                 success=True,
-                output=results[:input.max_results],
+                output=results[: input.max_results],
                 execution_time_ms=(time.time() - start) * 1000,
             )
 

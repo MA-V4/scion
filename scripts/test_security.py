@@ -23,5 +23,6 @@ def test_injection_detection():
 
     print(f"All tests passed: {all_passed}")
 
+
 if __name__ == "__main__":
     test_injection_detection()

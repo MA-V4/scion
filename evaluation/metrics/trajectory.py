@@ -114,9 +114,7 @@ class TrajectoryScorer:
         penalty = overshoot / max_steps
         return max(0.0, 1.0 - penalty)
 
-    def _score_error_recovery(
-        self, steps: list[dict[str, Any]], termination_reason: str
-    ) -> float:
+    def _score_error_recovery(self, steps: list[dict[str, Any]], termination_reason: str) -> float:
         """
         Did the agent recover from errors gracefully?
         Checks for repeated failed tool calls and timeout/budget termination.
@@ -149,6 +147,7 @@ class TrajectoryScorer:
 
         if "contains_number" in expected:
             import re
+
             checks_total += 1
             cleaned = final_answer.replace(",", "")
             numbers = re.findall(r"\d+\.?\d*", cleaned)

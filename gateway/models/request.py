@@ -20,6 +20,7 @@ class Message(BaseModel):
     name: str | None = None
     tool_call_id: str | None = None
 
+
 class LLMRequest(BaseModel):
     request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     model: str

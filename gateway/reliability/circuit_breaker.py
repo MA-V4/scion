@@ -52,6 +52,7 @@ class CircuitBreaker:
     def is_available(self) -> bool:
         return self.state in (CircuitState.CLOSED, CircuitState.HALF_OPEN)
 
+
 class CircuitBreakerRegistry:
     """One circuit breaker per model backend, created on first access."""
 

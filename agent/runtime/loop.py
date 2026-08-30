@@ -31,19 +31,23 @@ class AgentLoop:
     def __init__(self, config: AgentConfig, tool_registry: ToolRegistry | None = None) -> None:
         self._config = config
         self._registry = tool_registry or ToolRegistry()
-        self._mcp = MCPClient(MCPServer(
-            registry=self._registry,
-            allowed_tools=set(config.allowed_tools) if config.allowed_tools else None,
-        ))
+        self._mcp = MCPClient(
+            MCPServer(
+                registry=self._registry,
+                allowed_tools=set(config.allowed_tools) if config.allowed_tools else None,
+            )
+        )
         self._client = httpx.AsyncClient(base_url="http://localhost:8000", timeout=60.0)
-        self._context_manager = ContextManager(ContextBudget(
-            system_prompt=2048,
-            tool_definitions=4096,
-            recent_history=8192,
-            relevant_memory=2048,
-            tool_results=4096,
-            output_reserve=2048,
-        ))
+        self._context_manager = ContextManager(
+            ContextBudget(
+                system_prompt=2048,
+                tool_definitions=4096,
+                recent_history=8192,
+                relevant_memory=2048,
+                tool_results=4096,
+                output_reserve=2048,
+            )
+        )
         self._working = WorkingMemory()
         self._episodic = EpisodicMemory()
         self._semantic = SemanticMemory()
@@ -58,7 +62,11 @@ class AgentLoop:
         memory_entries = episodic_context + semantic_context
 
         if memory_entries:
-            log.info("agent.memory.loaded", episodic=len(episodic_context), semantic=len(semantic_context))
+            log.info(
+                "agent.memory.loaded",
+                episodic=len(episodic_context),
+                semantic=len(semantic_context),
+            )
 
         log.info("agent.run.start", task=task[:80], max_iterations=self._config.max_iterations)
 
@@ -83,17 +91,21 @@ class AgentLoop:
                         break
 
                     if step.tool_call:
-                        history.append({
-                            "role": "assistant",
-                            "content": None,
-                            "tool_calls": [step.tool_call],
-                        })
+                        history.append(
+                            {
+                                "role": "assistant",
+                                "content": None,
+                                "tool_calls": [step.tool_call],
+                            }
+                        )
                         result = await self._execute_tool(step.tool_call)
-                        history.append({
-                            "role": "tool",
-                            "tool_call_id": step.tool_call["id"],
-                            "content": json.dumps(result),
-                        })
+                        history.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": step.tool_call["id"],
+                                "content": json.dumps(result),
+                            }
+                        )
                         trace.tool_calls_made += 1
                     else:
                         history.append({"role": "assistant", "content": step.response})
@@ -109,15 +121,17 @@ class AgentLoop:
 
         trace.finished_at = time.time()
 
-        self._episodic.store(Episode(
-            task=task,
-            summary=trace.final_answer[:200] if trace.final_answer else "",
-            outcome=trace.termination_reason,
-            tool_calls_made=trace.tool_calls_made,
-            tokens_used=trace.total_tokens,
-            steps_taken=len(trace.steps),
-            created_at=trace.started_at,
-        ))
+        self._episodic.store(
+            Episode(
+                task=task,
+                summary=trace.final_answer[:200] if trace.final_answer else "",
+                outcome=trace.termination_reason,
+                tool_calls_made=trace.tool_calls_made,
+                tokens_used=trace.total_tokens,
+                steps_taken=len(trace.steps),
+                created_at=trace.started_at,
+            )
+        )
 
         log.info(
             "agent.run.complete",
@@ -129,7 +143,9 @@ class AgentLoop:
         )
         return trace
 
-    async def _step(self, history: list[dict[str, Any]], iteration: int, memory_entries: list[str] | None = None) -> AgentStep:
+    async def _step(
+        self, history: list[dict[str, Any]], iteration: int, memory_entries: list[str] | None = None
+    ) -> AgentStep:
         tools = self._registry.list_schemas(
             allowed=set(self._config.allowed_tools) if self._config.allowed_tools else None
         )
@@ -200,10 +216,18 @@ class AgentLoop:
                 result_text = str(result)
                 scan_result = scan(result_text)
                 if scan_result.is_injection:
-                    log.warning("agent.security.injection_detected", tool=name, patterns=scan_result.injection_matches)
+                    log.warning(
+                        "agent.security.injection_detected",
+                        tool=name,
+                        patterns=scan_result.injection_matches,
+                    )
                     return f"[BLOCKED] Tool result from '{name}' was flagged for prompt injection and discarded."
                 if scan_result.has_secrets:
-                    log.warning("agent.security.secret_detected", tool=name, patterns=scan_result.secret_matches)
+                    log.warning(
+                        "agent.security.secret_detected",
+                        tool=name,
+                        patterns=scan_result.secret_matches,
+                    )
                     return f"[BLOCKED] Tool result from '{name}' contained potential secrets and was redacted."
 
             return result

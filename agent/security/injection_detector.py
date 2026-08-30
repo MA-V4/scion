@@ -10,7 +10,9 @@ INJECTION_PATTERNS = [
     re.compile(r"your\s+new\s+(role|instructions?|persona|task)\s+(is|are)", re.IGNORECASE),
     re.compile(r"act\s+as\s+(if\s+you\s+are|a\s+)", re.IGNORECASE),
     re.compile(r"forget\s+(everything|all)\s+(you\s+)?(know|were\s+told)", re.IGNORECASE),
-    re.compile(r"(send|upload|exfiltrate|transmit)\s+.{0,30}(to\s+http|to\s+\S+\.com)", re.IGNORECASE),
+    re.compile(
+        r"(send|upload|exfiltrate|transmit)\s+.{0,30}(to\s+http|to\s+\S+\.com)", re.IGNORECASE
+    ),
     re.compile(r"reveal\s+(your\s+)?(system\s+prompt|instructions?|api\s+key)", re.IGNORECASE),
     re.compile(r"print\s+(your\s+)?(system\s+prompt|instructions?)", re.IGNORECASE),
     re.compile(r"(rm|del|delete|drop)\s+.{0,20}(database|table|all\s+files?)", re.IGNORECASE),
@@ -39,12 +41,8 @@ class ScanResult:
 
 def scan(text: str) -> ScanResult:
     """Scan text for prompt injection attempts and secret leakage."""
-    injection_matches = [
-        p.pattern for p in INJECTION_PATTERNS if p.search(text)
-    ]
-    secret_matches = [
-        p.pattern for p in SECRET_PATTERNS if p.search(text)
-    ]
+    injection_matches = [p.pattern for p in INJECTION_PATTERNS if p.search(text)]
+    secret_matches = [p.pattern for p in SECRET_PATTERNS if p.search(text)]
 
     return ScanResult(
         is_injection=len(injection_matches) > 0,

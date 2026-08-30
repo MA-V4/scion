@@ -101,7 +101,11 @@ class FilesystemTool(Tool):
                         execution_time_ms=(time.time() - start) * 1000,
                     )
                 entries = [
-                    {"name": e.name, "type": "dir" if e.is_dir() else "file", "size": e.stat().st_size if e.is_file() else 0}
+                    {
+                        "name": e.name,
+                        "type": "dir" if e.is_dir() else "file",
+                        "size": e.stat().st_size if e.is_file() else 0,
+                    }
                     for e in sorted(path.iterdir())
                 ]
                 return ToolResult(

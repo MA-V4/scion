@@ -18,6 +18,7 @@ then write a structured research summary to moe_research.txt covering
 what you found.
 """
 
+
 async def main():
     registry = ToolRegistry()
     registry.register(CalculatorTool())

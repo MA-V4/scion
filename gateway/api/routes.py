@@ -71,7 +71,9 @@ async def chat_completions(request: Request, body: LLMRequest) -> LLMResponse | 
             request_total.labels(model=model.name, status="success").inc()
             request_latency.labels(model=model.name).observe(latency)
             tokens_total.labels(model=model.name, type="input").inc(response.usage.prompt_tokens)
-            tokens_total.labels(model=model.name, type="output").inc(response.usage.completion_tokens)
+            tokens_total.labels(model=model.name, type="output").inc(
+                response.usage.completion_tokens
+            )
             cost = (
                 response.usage.prompt_tokens / 1_000_000 * model.cost_per_1m_input
                 + response.usage.completion_tokens / 1_000_000 * model.cost_per_1m_output
@@ -85,6 +87,7 @@ async def chat_completions(request: Request, body: LLMRequest) -> LLMResponse | 
 
         except Exception as e:
             import traceback
+
             cb.record_failure()
             last_error = e
             print(f"Backend {model.name} failed: {type(e).__name__}: {e}\n{traceback.format_exc()}")

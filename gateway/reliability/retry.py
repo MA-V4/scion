@@ -33,14 +33,14 @@ async def with_retry(
             elif attempt == max_attempts - 1:
                 break
             else:
-                delay = min(max_delay_s, base_delay_s * (2 ** attempt))
+                delay = min(max_delay_s, base_delay_s * (2**attempt))
                 jitter = random.uniform(0, delay)
                 await asyncio.sleep(jitter)
         except Exception as exc:
             last_exc = exc
             if attempt == max_attempts - 1:
                 break
-            delay = min(max_delay_s, base_delay_s * (2 ** attempt))
+            delay = min(max_delay_s, base_delay_s * (2**attempt))
             jitter = random.uniform(0, delay)
             await asyncio.sleep(jitter)
 

@@ -59,13 +59,15 @@ class ArxivTool(Tool):
         start = time.time()
 
         try:
-            params = urllib.parse.urlencode({
-                "search_query": f"all:{input.query}",
-                "start": 0,
-                "max_results": min(input.max_results, 10),
-                "sortBy": "relevance",
-                "sortOrder": "descending",
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "search_query": f"all:{input.query}",
+                    "start": 0,
+                    "max_results": min(input.max_results, 10),
+                    "sortBy": "relevance",
+                    "sortOrder": "descending",
+                }
+            )
             url = f"{self.BASE_URL}?{params}"
 
             with urllib.request.urlopen(url, timeout=15) as resp:
@@ -80,7 +82,9 @@ class ArxivTool(Tool):
                         "id": p.id,
                         "title": p.title,
                         "authors": p.authors[:3],
-                        "abstract": p.abstract[:500] + "..." if len(p.abstract) > 500 else p.abstract,
+                        "abstract": p.abstract[:500] + "..."
+                        if len(p.abstract) > 500
+                        else p.abstract,
                         "published": p.published,
                         "pdf_url": p.pdf_url,
                     }
@@ -106,18 +110,25 @@ class ArxivTool(Tool):
             arxiv_id = raw_id.split("/abs/")[-1] if "/abs/" in raw_id else raw_id
 
             title_el = entry.find(f"{{{NS}}}title")
-            title = title_el.text.strip().replace("\n", " ") if title_el is not None and title_el.text else ""
+            title = (
+                title_el.text.strip().replace("\n", " ")
+                if title_el is not None and title_el.text
+                else ""
+            )
 
             abstract_el = entry.find(f"{{{NS}}}summary")
-            abstract = abstract_el.text.strip().replace("\n", " ") if abstract_el is not None and abstract_el.text else ""
+            abstract = (
+                abstract_el.text.strip().replace("\n", " ")
+                if abstract_el is not None and abstract_el.text
+                else ""
+            )
 
             published_el = entry.find(f"{{{NS}}}published")
-            published = published_el.text[:10] if published_el is not None and published_el.text else ""
+            published = (
+                published_el.text[:10] if published_el is not None and published_el.text else ""
+            )
 
-            authors = [
-                a.findtext(f"{{{NS}}}name", "")
-                for a in entry.findall(f"{{{NS}}}author")
-            ]
+            authors = [a.findtext(f"{{{NS}}}name", "") for a in entry.findall(f"{{{NS}}}author")]
 
             pdf_url = ""
             for link in entry.findall(f"{{{NS}}}link"):
@@ -125,13 +136,15 @@ class ArxivTool(Tool):
                     pdf_url = link.get("href", "")
                     break
 
-            papers.append(ArxivPaper(
-                id=arxiv_id,
-                title=title,
-                authors=authors,
-                abstract=abstract,
-                published=published,
-                pdf_url=pdf_url,
-            ))
+            papers.append(
+                ArxivPaper(
+                    id=arxiv_id,
+                    title=title,
+                    authors=authors,
+                    abstract=abstract,
+                    published=published,
+                    pdf_url=pdf_url,
+                )
+            )
 
         return papers

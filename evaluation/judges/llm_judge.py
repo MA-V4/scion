@@ -80,15 +80,18 @@ Agent stats: {steps_taken} steps, {tool_calls_made} tool calls
 Evaluate this and respond with JSON only."""
 
         try:
-            resp = await self._client.post("/v1/chat/completions", json={
-                "model": "reasoning",
-                "messages": [
-                    {"role": "system", "content": self.SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "max_tokens": 300,
-                "temperature": 0.1,
-            })
+            resp = await self._client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "reasoning",
+                    "messages": [
+                        {"role": "system", "content": self.SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "max_tokens": 300,
+                    "temperature": 0.1,
+                },
+            )
             resp.raise_for_status()
             data = resp.json()
             content = data["choices"][0]["message"]["content"]
@@ -135,8 +138,7 @@ Evaluate this and respond with JSON only."""
         if not judge_results or len(judge_results) != len(deterministic_results):
             return 0.0
         agreed = sum(
-            j.correct == d
-            for j, d in zip(judge_results, deterministic_results, strict=True)
+            j.correct == d for j, d in zip(judge_results, deterministic_results, strict=True)
         )
         return agreed / len(judge_results)
 

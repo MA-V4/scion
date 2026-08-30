@@ -72,7 +72,9 @@ class GitHubTool(Tool):
         try:
             if input.operation == "search_repos":
                 if not input.query:
-                    return ToolResult(success=False, output=None, error="query required for search_repos")
+                    return ToolResult(
+                        success=False, output=None, error="query required for search_repos"
+                    )
                 params = urllib.parse.urlencode({"q": input.query, "per_page": input.max_results})
                 data = self._get(f"/search/repositories?{params}")
                 results = [
@@ -85,26 +87,34 @@ class GitHubTool(Tool):
                     }
                     for r in data.get("items", [])
                 ]
-                return ToolResult(success=True, output=results, execution_time_ms=(time.time() - start) * 1000)
+                return ToolResult(
+                    success=True, output=results, execution_time_ms=(time.time() - start) * 1000
+                )
 
             elif input.operation == "get_repo":
                 if not input.owner or not input.repo:
                     return ToolResult(success=False, output=None, error="owner and repo required")
                 data = self._get(f"/repos/{input.owner}/{input.repo}")
-                return ToolResult(success=True, output={
-                    "name": data["full_name"],
-                    "description": data.get("description", ""),
-                    "stars": data["stargazers_count"],
-                    "forks": data["forks_count"],
-                    "language": data.get("language", ""),
-                    "topics": data.get("topics", []),
-                    "url": data["html_url"],
-                }, execution_time_ms=(time.time() - start) * 1000)
+                return ToolResult(
+                    success=True,
+                    output={
+                        "name": data["full_name"],
+                        "description": data.get("description", ""),
+                        "stars": data["stargazers_count"],
+                        "forks": data["forks_count"],
+                        "language": data.get("language", ""),
+                        "topics": data.get("topics", []),
+                        "url": data["html_url"],
+                    },
+                    execution_time_ms=(time.time() - start) * 1000,
+                )
 
             elif input.operation == "list_issues":
                 if not input.owner or not input.repo:
                     return ToolResult(success=False, output=None, error="owner and repo required")
-                data = self._get(f"/repos/{input.owner}/{input.repo}/issues?state=open&per_page={input.max_results}")
+                data = self._get(
+                    f"/repos/{input.owner}/{input.repo}/issues?state=open&per_page={input.max_results}"
+                )
                 results = [
                     {
                         "number": i["number"],
@@ -115,21 +125,37 @@ class GitHubTool(Tool):
                     }
                     for i in data
                 ]
-                return ToolResult(success=True, output=results, execution_time_ms=(time.time() - start) * 1000)
+                return ToolResult(
+                    success=True, output=results, execution_time_ms=(time.time() - start) * 1000
+                )
 
             elif input.operation == "read_file":
                 if not input.owner or not input.repo or not input.path:
-                    return ToolResult(success=False, output=None, error="owner, repo, and path required")
+                    return ToolResult(
+                        success=False, output=None, error="owner, repo, and path required"
+                    )
                 import base64
+
                 data = self._get(f"/repos/{input.owner}/{input.repo}/contents/{input.path}")
                 if data.get("encoding") == "base64":
                     content = base64.b64decode(data["content"]).decode("utf-8")
                 else:
                     content = data.get("content", "")
-                return ToolResult(success=True, output=content[:3000], execution_time_ms=(time.time() - start) * 1000)
+                return ToolResult(
+                    success=True,
+                    output=content[:3000],
+                    execution_time_ms=(time.time() - start) * 1000,
+                )
 
             else:
-                return ToolResult(success=False, output=None, error=f"Unknown operation: {input.operation}")
+                return ToolResult(
+                    success=False, output=None, error=f"Unknown operation: {input.operation}"
+                )
 
         except Exception as e:
-            return ToolResult(success=False, output=None, error=str(e), execution_time_ms=(time.time() - start) * 1000)
+            return ToolResult(
+                success=False,
+                output=None,
+                error=str(e),
+                execution_time_ms=(time.time() - start) * 1000,
+            )
