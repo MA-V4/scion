@@ -1,7 +1,7 @@
 import asyncio
 import time
-import httpx
 
+import httpx
 
 STRATEGIES = ["round_robin", "cost_aware", "health_aware", "least_loaded"]
 TASKS = [
@@ -62,19 +62,19 @@ async def main():
 
         # Test round robin (default, no strategy name needed)
         result = await benchmark_strategy("fast", client)
-        print(f"Fast model direct:")
+        print("Fast model direct:")
         print(f"  p50={result.get('p50_ms')}ms p95={result.get('p95_ms')}ms mean={result.get('mean_ms')}ms")
         print(f"  errors={result.get('errors', 0)}")
         print()
 
         result2 = await benchmark_strategy("local", client)
-        print(f"Local model direct:")
+        print("Local model direct:")
         print(f"  p50={result2.get('p50_ms')}ms p95={result2.get('p95_ms')}ms mean={result2.get('mean_ms')}ms")
         print(f"  errors={result2.get('errors', 0)}")
         print()
 
         result3 = await benchmark_strategy("reasoning", client)
-        print(f"Reasoning model direct:")
+        print("Reasoning model direct:")
         print(f"  p50={result3.get('p50_ms')}ms p95={result3.get('p95_ms')}ms mean={result3.get('mean_ms')}ms")
         print(f"  errors={result3.get('errors', 0)}")
 

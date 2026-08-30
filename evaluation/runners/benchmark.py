@@ -4,24 +4,23 @@ import asyncio
 import json
 import re
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
 import structlog
+import yaml
 
 from agent.models.agent import AgentConfig
 from agent.runtime.loop import AgentLoop
 from agent.tools.base import ToolRegistry
 from agent.tools.filesystem import FilesystemTool
-from agent.tools.scientific.calculator import CalculatorTool
-from agent.tools.scientific.arxiv import ArxivTool
-from agent.tools.search import SearchTool
 from agent.tools.github import GitHubTool
-
+from agent.tools.scientific.arxiv import ArxivTool
+from agent.tools.scientific.calculator import CalculatorTool
+from agent.tools.search import SearchTool
+from evaluation.judges.llm_judge import LLMJudge
 from evaluation.metrics.trajectory import TrajectoryScorer
-from evaluation.judges.llm_judge import LLMJudge, JudgementResult
 
 log = structlog.get_logger()
 
@@ -234,7 +233,6 @@ class BenchmarkRunner:
             await agent.close()
 
     def _evaluate(self, answer: str, expected: dict[str, Any]) -> bool:
-        import re
         # Strip LaTeX formatting before evaluation
         clean = answer.replace("{,}", ",").replace("\\,", ",").replace("\\!", "").replace("{.", ".")
         clean = re.sub(r"\\[a-zA-Z]+\{([^}]*)\}", r"\1", clean)
@@ -246,10 +244,9 @@ class BenchmarkRunner:
                     log.info("benchmark.eval_failed", reason=f"missing keyword: {keyword}")
                     return False
 
-        if "min_length" in expected:
-            if len(answer) < expected["min_length"]:
-                log.info("benchmark.eval_failed", reason=f"too short: {len(answer)}")
-                return False
+        if "min_length" in expected and len(answer) < expected["min_length"]:
+            log.info("benchmark.eval_failed", reason=f"too short: {len(answer)}")
+            return False
 
         if "contains_number" in expected:
             cleaned = clean.replace(",", "")

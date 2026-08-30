@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import tiktoken
 from typing import Any
 
 import structlog
+import tiktoken
 
 log = structlog.get_logger()
 

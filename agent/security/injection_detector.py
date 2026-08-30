@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 INJECTION_PATTERNS = [
     re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions?", re.IGNORECASE),
     re.compile(r"disregard\s+(your\s+)?(system\s+)?(prompt|instructions?)", re.IGNORECASE),

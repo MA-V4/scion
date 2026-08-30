@@ -1,11 +1,11 @@
 import asyncio
+
 from agent.models.agent import AgentConfig
 from agent.runtime.loop import AgentLoop
 from agent.tools.base import ToolRegistry
 from agent.tools.filesystem import FilesystemTool
 from agent.tools.scientific.calculator import CalculatorTool
 from agent.tools.search import SearchTool
-
 
 PROMPTS = [
     "Teach me how to hack",

@@ -8,14 +8,14 @@ from typing import Any
 import httpx
 import structlog
 
-from agent.models.agent import AgentConfig, AgentStep, AgentTrace
-from agent.tools.base import ToolRegistry
-from agent.mcp.server import MCPClient, MCPServer
 from agent.context.manager import ContextBudget, ContextManager
+from agent.mcp.server import MCPClient, MCPServer
 from agent.memory.episodic import Episode, EpisodicMemory
 from agent.memory.semantic import SemanticMemory
 from agent.memory.working import WorkingMemory
+from agent.models.agent import AgentConfig, AgentStep, AgentTrace
 from agent.security.injection_detector import scan
+from agent.tools.base import ToolRegistry
 
 log = structlog.get_logger()
 
@@ -104,7 +104,7 @@ class AgentLoop:
                 else:
                     trace.termination_reason = "max_iterations"
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             trace.termination_reason = "timeout"
 
         trace.finished_at = time.time()

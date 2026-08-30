@@ -1,5 +1,5 @@
-import asyncio
 from agent.security.injection_detector import scan
+
 
 def test_injection_detection():
     cases = [

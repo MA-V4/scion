@@ -4,7 +4,7 @@ import uuid
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class Role(StrEnum):

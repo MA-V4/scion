@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any
 
-import yaml
 import structlog
+import yaml
 
 from agent.models.agent import AgentConfig
 from agent.runtime.loop import AgentLoop

@@ -1,12 +1,13 @@
 import asyncio
+
 from agent.models.agent import AgentConfig
 from agent.runtime.loop import AgentLoop
 from agent.tools.base import ToolRegistry
 from agent.tools.filesystem import FilesystemTool
-from agent.tools.scientific.calculator import CalculatorTool
-from agent.tools.scientific.arxiv import ArxivTool
-from agent.tools.search import SearchTool
 from agent.tools.github import GitHubTool
+from agent.tools.scientific.arxiv import ArxivTool
+from agent.tools.scientific.calculator import CalculatorTool
+from agent.tools.search import SearchTool
 
 
 async def main():

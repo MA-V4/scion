@@ -1,5 +1,6 @@
-import asyncio
 import argparse
+import asyncio
+
 from evaluation.runners.benchmark import BenchmarkRunner
 
 

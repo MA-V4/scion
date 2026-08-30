@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import structlog
 
-from agent.tools.base import Tool, ToolRegistry, ToolResult
+from agent.tools.base import ToolRegistry, ToolResult
 
 log = structlog.get_logger()
 
@@ -35,7 +34,7 @@ class MCPServer:
         try:
             tool = self._registry.get(tool_name)
         except KeyError:
-            raise KeyError(f"Tool '{tool_name}' not registered")
+            raise KeyError(f"Tool '{tool_name}' not registered") from None
 
         input_model = tool.input_schema(**arguments)
         result: ToolResult = await tool.execute(input_model)
