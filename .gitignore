@@ -33,7 +33,9 @@ htmlcov/
 coverage.xml
 
 # BENCHMARK RESULTS
-benchmarks/results/*.json
+benchmarks/results/general_*.json
+benchmarks/results/scientific_*.json
+benchmarks/results/safety_*.json
 benchmarks/results/*.csv
 
 # LOGS
