@@ -1,12 +1,26 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any
 
 import yaml
+import structlog
+
+from agent.models.agent import AgentConfig
+from agent.runtime.loop import AgentLoop
+from agent.tools.base import ToolRegistry
+from agent.tools.filesystem import FilesystemTool
+from agent.tools.scientific.calculator import CalculatorTool
+from agent.tools.scientific.arxiv import ArxivTool
+from agent.tools.search import SearchTool
+from agent.tools.github import GitHubTool
+
+log = structlog.get_logger()
 
 
 @dataclass
@@ -27,11 +41,9 @@ class TaskOutcome:
     tool_calls_made: int
     tokens_used: int
     latency_ms: float
-    tool_selection_accuracy: float
-    trajectory_score: float
-    judge_score: float | None = None
+    termination_reason: str
+    final_answer: str
     error: str | None = None
-    trace: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -47,19 +59,37 @@ class BenchmarkResult:
         return sum(o.success for o in self.outcomes) / len(self.outcomes)
 
     @property
-    def mean_trajectory_score(self) -> float:
-        scores = [o.trajectory_score for o in self.outcomes]
-        return sum(scores) / len(scores) if scores else 0.0
+    def mean_steps(self) -> float:
+        if not self.outcomes:
+            return 0.0
+        return sum(o.steps_taken for o in self.outcomes) / len(self.outcomes)
+
+    @property
+    def mean_tokens(self) -> float:
+        if not self.outcomes:
+            return 0.0
+        return sum(o.tokens_used for o in self.outcomes) / len(self.outcomes)
 
     @property
     def tool_error_rate(self) -> float:
-        if not self.outcomes:
+        total = sum(o.tool_calls_made for o in self.outcomes)
+        if total == 0:
             return 0.0
-        total_calls = sum(o.tool_calls_made for o in self.outcomes)
-        if total_calls == 0:
-            return 0.0
-        # TODO: track invalid tool calls separately in TaskOutcome
-        return 0.0
+        errors = sum(1 for o in self.outcomes if not o.success and o.tool_calls_made > 0)
+        return errors / len(self.outcomes)
+
+    def print_summary(self) -> None:
+        print(f"\n{chr(61)*50}")
+        print(f"Benchmark: {self.suite}")
+        print(f"Tasks run: {len(self.outcomes)}")
+        print(f"Success rate: {self.task_success_rate:.1%}")
+        print(f"Mean steps: {self.mean_steps:.1f}")
+        print(f"Mean tokens: {self.mean_tokens:.0f}")
+        print(f"Tool error rate: {self.tool_error_rate:.1%}")
+        print(f"{chr(61)*50}")
+        for o in self.outcomes:
+            status = "PASS" if o.success else "FAIL"
+            print(f"  [{status}] {o.task_id} | steps={o.steps_taken} tokens={o.tokens_used} latency={o.latency_ms:.0f}ms")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -67,19 +97,26 @@ class BenchmarkResult:
             "run_at": self.run_at,
             "summary": {
                 "task_success_rate": self.task_success_rate,
-                "mean_trajectory_score": self.mean_trajectory_score,
+                "mean_steps": self.mean_steps,
+                "mean_tokens": self.mean_tokens,
                 "tool_error_rate": self.tool_error_rate,
                 "total_tasks": len(self.outcomes),
             },
-            "outcomes": [vars(o) for o in self.outcomes],
+            "outcomes": [asdict(o) for o in self.outcomes],
         }
 
 
+def build_registry() -> ToolRegistry:
+    registry = ToolRegistry()
+    registry.register(CalculatorTool())
+    registry.register(FilesystemTool())
+    registry.register(ArxivTool())
+    registry.register(SearchTool())
+    registry.register(GitHubTool())
+    return registry
+
+
 class BenchmarkRunner:
-    """
-    Loads tasks from YAML, runs each task through the agent, records outcomes.
-    Results are written to benchmarks/results/ as JSON.
-    """
 
     SUITE_PATHS = {
         "general": "evaluation/datasets/general/tasks.yaml",
@@ -89,7 +126,7 @@ class BenchmarkRunner:
 
     def __init__(self, suite: str = "general") -> None:
         if suite not in self.SUITE_PATHS:
-            raise ValueError(f"Unknown suite '{suite}'. Choose from: {list(self.SUITE_PATHS)}")
+            raise ValueError(f"Unknown suite. Choose from: {list(self.SUITE_PATHS)}")
         self._suite = suite
         self._tasks: list[BenchmarkTask] = []
 
@@ -98,30 +135,89 @@ class BenchmarkRunner:
         with open(path) as f:
             raw = yaml.safe_load(f)
         self._tasks = [BenchmarkTask(**t) for t in raw.get("tasks", [])]
-        print(f"Loaded {len(self._tasks)} tasks from {path}")
+        log.info("benchmark.tasks_loaded", suite=self._suite, count=len(self._tasks))
 
     async def run(self) -> BenchmarkResult:
         result = BenchmarkResult(suite=self._suite)
-        for task in self._tasks:
-            print(f"  Running: {task.id}")
+        for i, task in enumerate(self._tasks):
+            if i > 0:
+                await asyncio.sleep(5)
+            log.info("benchmark.task_start", task_id=task.id)
             outcome = await self._run_task(task)
             result.outcomes.append(outcome)
-
+            status = "PASS" if outcome.success else "FAIL"
+            log.info("benchmark.task_done", task_id=task.id, status=status, steps=outcome.steps_taken)
         self._save(result)
         return result
 
     async def _run_task(self, task: BenchmarkTask) -> TaskOutcome:
-        # TODO:
-        # 1. Instantiate AgentLoop with task.allowed_tools
-        # 2. Run agent on task.description, capture AgentTrace
-        # 3. Evaluate trace with DeterministicMetrics
-        # 4. Score trajectory with TrajectoryScorer
-        # 5. Optionally: score with LLMJudge
-        # 6. Return TaskOutcome
-        raise NotImplementedError
+        registry = build_registry()
+        config = AgentConfig(
+            model="fast",
+            max_iterations=task.max_steps,
+            token_budget=16384,
+            timeout_s=120.0,
+            allowed_tools=task.allowed_tools,
+        )
+        agent = AgentLoop(config=config, tool_registry=registry)
+        start = time.time()
+        try:
+            trace = await agent.run(task.description)
+            latency_ms = (time.time() - start) * 1000
+            success = self._evaluate(trace.final_answer or "", task.expected)
+            return TaskOutcome(
+                task_id=task.id,
+                success=success,
+                steps_taken=len(trace.steps),
+                tool_calls_made=trace.tool_calls_made,
+                tokens_used=trace.total_tokens,
+                latency_ms=latency_ms,
+                termination_reason=trace.termination_reason,
+                final_answer=trace.final_answer or "",
+            )
+        except Exception as e:
+            latency_ms = (time.time() - start) * 1000
+            return TaskOutcome(
+                task_id=task.id,
+                success=False,
+                steps_taken=0,
+                tool_calls_made=0,
+                tokens_used=0,
+                latency_ms=latency_ms,
+                termination_reason="error",
+                final_answer="",
+                error=str(e),
+            )
+        finally:
+            await agent.close()
+
+    def _evaluate(self, answer: str, expected: dict[str, Any]) -> bool:
+        answer_lower = answer.lower()
+
+        if "keywords" in expected:
+            for keyword in expected["keywords"]:
+                if keyword.lower() not in answer_lower:
+                    log.info("benchmark.eval_failed", reason=f"missing keyword: {keyword}")
+                    return False
+
+        if "min_length" in expected:
+            if len(answer) < expected["min_length"]:
+                log.info("benchmark.eval_failed", reason=f"too short: {len(answer)}")
+                return False
+
+        if "contains_number" in expected:
+            cleaned = answer.replace(",", "").replace("\\,", "")
+            numbers = re.findall(r"\d+\.?\d*", cleaned)
+            found = [float(n) for n in numbers]
+            target = float(expected["contains_number"])
+            if not any(abs(n - target) < target * 0.01 for n in found):
+                log.info("benchmark.eval_failed", reason=f"missing number: {target}")
+                return False
+
+        return True
 
     def _save(self, result: BenchmarkResult) -> None:
         out = Path("benchmarks/results") / f"{self._suite}_{int(result.run_at)}.json"
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(result.to_dict(), indent=2))
-        print(f"Results written to {out}")
+        log.info("benchmark.saved", path=str(out))
