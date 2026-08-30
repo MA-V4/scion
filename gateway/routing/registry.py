@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import time
 from pathlib import Path
 
+import httpx
 import yaml
 
 from gateway.models.registry import ModelHealth, ModelProvider, ModelSpec
@@ -11,14 +13,17 @@ from gateway.models.registry import ModelHealth, ModelProvider, ModelSpec
 class ModelRegistry:
     """
     Declarative model registry backed by models.yaml.
-    Runtime health state is maintained per-instance (in production, back this with Redis).
+    Runtime health state is maintained in-process.
+    Background polling updates health every POLL_INTERVAL seconds.
     """
+
+    POLL_INTERVAL = 30.0
 
     def __init__(self) -> None:
         self._models: dict[str, ModelSpec] = {}
+        self._poll_task: asyncio.Task | None = None
 
     def load_from_yaml(self, path: str | Path) -> None:
-        """Load model specs from a YAML config file."""
         with open(path) as f:
             config = yaml.safe_load(f)
 
@@ -35,6 +40,53 @@ class ModelRegistry:
             )
             self._models[spec.name] = spec
 
+    def start_polling(self) -> None:
+        """Start background health polling task."""
+        self._poll_task = asyncio.create_task(self._poll_loop())
+
+    def stop_polling(self) -> None:
+        if self._poll_task:
+            self._poll_task.cancel()
+
+    async def _poll_loop(self) -> None:
+        import structlog
+        log = structlog.get_logger()
+        while True:
+            await asyncio.sleep(self.POLL_INTERVAL)
+            for name, spec in self._models.items():
+                try:
+                    healthy = await self._check_health(spec)
+                    self._models[name].health.is_healthy = healthy
+                    self._models[name].health.last_checked_at = time.time()
+                    log.info("registry.health_poll", model=name, healthy=healthy)
+                except Exception as e:
+                    log.warning("registry.health_poll_failed", model=name, error=str(e))
+                    self._models[name].health.is_healthy = False
+
+    async def _check_health(self, spec: ModelSpec) -> bool:
+        if spec.provider == ModelProvider.GROQ:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                from gateway.config import settings
+                resp = await client.get(
+                    "https://api.groq.com/openai/v1/models",
+                    headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                )
+                return resp.status_code == 200
+
+        if spec.provider == ModelProvider.OLLAMA:
+            endpoint = spec.endpoint or "http://localhost:11434"
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{endpoint}/api/tags")
+                return resp.status_code == 200
+
+        if spec.provider == ModelProvider.VLLM:
+            endpoint = spec.endpoint or "http://localhost:8080"
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{endpoint}/health")
+                return resp.status_code == 200
+
+        return True
+
     def get(self, name: str) -> ModelSpec:
         if name not in self._models:
             raise KeyError(f"Model '{name}' not found in registry")
@@ -50,8 +102,3 @@ class ModelRegistry:
         if model_name in self._models:
             health.last_checked_at = time.time()
             self._models[model_name].health = health
-
-    async def poll_health(self) -> None:
-        """Poll all registered backends for health. Called on a background interval."""
-        # TODO: implement per-provider health checks via the backend adapters
-        raise NotImplementedError

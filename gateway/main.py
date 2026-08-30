@@ -30,8 +30,10 @@ circuit_breakers = CircuitBreakerRegistry()
 async def lifespan(app: FastAPI):
     log.info("scion.gateway.starting", env=settings.env, port=settings.port)
     registry.load_from_yaml(settings.models_config_path)
+    registry.start_polling()
     log.info("scion.gateway.models_loaded", count=len(registry.all()))
     yield
+    registry.stop_polling()
     await factory.close_all()
     log.info("scion.gateway.stopped")
 
