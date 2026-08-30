@@ -234,11 +234,15 @@ class BenchmarkRunner:
             await agent.close()
 
     def _evaluate(self, answer: str, expected: dict[str, Any]) -> bool:
-        answer_lower = answer.lower()
+        import re
+        # Strip LaTeX formatting before evaluation
+        clean = answer.replace("{,}", ",").replace("\\,", ",").replace("\\!", "").replace("{.", ".")
+        clean = re.sub(r"\\[a-zA-Z]+\{([^}]*)\}", r"\1", clean)
+        answer_lower = clean.lower()
 
         if "keywords" in expected:
             for keyword in expected["keywords"]:
-                if keyword.lower() not in answer_lower:
+                if str(keyword).lower() not in answer_lower:
                     log.info("benchmark.eval_failed", reason=f"missing keyword: {keyword}")
                     return False
 
@@ -248,8 +252,7 @@ class BenchmarkRunner:
                 return False
 
         if "contains_number" in expected:
-            import re
-            cleaned = answer.replace(",", "").replace("\\,", "").replace("{,}", "").replace("{.", ".")
+            cleaned = clean.replace(",", "")
             numbers = re.findall(r"\d+\.?\d*", cleaned)
             found = [float(n) for n in numbers]
             target = float(expected["contains_number"])
