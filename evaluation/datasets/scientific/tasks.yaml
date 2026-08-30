@@ -1,21 +1,34 @@
 tasks:
   - id: sci_001
     description: >
-      Search arXiv for papers published in 2024 on "protein structure prediction".
-      Retrieve the abstracts of the top 3 results and identify any methodological disagreements.
-    allowed_tools: [arxiv, calculator]
+      Search arXiv for one paper about protein structure prediction
+      and give its title and the year it was published.
+    allowed_tools: [arxiv]
     expected:
-      papers_retrieved: 3
-      disagreements_identified: true
-    max_steps: 10
-    evaluation_criteria: [tool_selection, groundedness, final_answer_correctness]
+      keywords: [protein, title]
+      min_length: 50
+    max_steps: 3
+    evaluation_criteria: [tool_selection, groundedness]
 
   - id: sci_002
     description: >
-      Find the molecular weight of caffeine (C8H10N4O2) using atomic weights
-      (C=12.011, H=1.008, N=14.007, O=15.999) and confirm the result.
+      Calculate the molecular weight of water (H2O).
+      Hydrogen atomic weight is 1.008, Oxygen atomic weight is 15.999.
     allowed_tools: [calculator]
     expected:
-      molecular_weight_approx: 194.19
+      contains_number: 18.015
+      min_length: 30
     max_steps: 4
+    evaluation_criteria: [tool_selection, final_answer_correctness]
+
+  - id: sci_003
+    description: >
+      Calculate the energy in joules of a photon with wavelength 500nm.
+      Use E = hc/wavelength where h = 6.626e-34 and c = 3e8.
+      Express your answer in scientific notation.
+    allowed_tools: [calculator]
+    expected:
+      keywords: ["3.98", "10"]
+      min_length: 30
+    max_steps: 5
     evaluation_criteria: [tool_selection, final_answer_correctness]
