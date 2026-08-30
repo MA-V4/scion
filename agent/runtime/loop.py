@@ -10,6 +10,7 @@ import structlog
 
 from agent.models.agent import AgentConfig, AgentStep, AgentTrace
 from agent.tools.base import ToolRegistry
+from agent.mcp.server import MCPClient, MCPServer
 
 log = structlog.get_logger()
 
@@ -23,8 +24,12 @@ class AgentLoop:
     def __init__(self, config: AgentConfig, tool_registry: ToolRegistry | None = None) -> None:
         self._config = config
         self._registry = tool_registry or ToolRegistry()
+        self._mcp = MCPClient(MCPServer(
+            registry=self._registry,
+            allowed_tools=set(config.allowed_tools) if config.allowed_tools else None,
+        ))
         self._client = httpx.AsyncClient(base_url="http://localhost:8000", timeout=60.0)
-
+        
     async def run(self, task: str) -> AgentTrace:
         trace = AgentTrace(task=task, started_at=time.time())
         history: list[dict[str, Any]] = [{"role": "user", "content": task}]
@@ -142,12 +147,11 @@ class AgentLoop:
         log.info("agent.tool_call", tool=name, args=args)
 
         try:
-            tool = self._registry.get(name)
-            input_model = tool.input_schema(**args)
-            result = await tool.execute(input_model)
-            return result.output if result.success else f"Error: {result.error}"
-        except KeyError:
-            return f"Tool '{name}' not found"
+            return await self._mcp.call_tool(name, args)
+        except PermissionError as e:
+            return f"Permission denied: {e}"
+        except KeyError as e:
+            return f"Tool not found: {e}"
         except Exception as e:
             return f"Tool execution failed: {e}"
 
