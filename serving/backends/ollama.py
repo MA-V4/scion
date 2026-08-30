@@ -20,7 +20,7 @@ class OllamaBackend(Backend):
     async def generate(self, request: LLMRequest) -> LLMResponse:
         payload = {
             "model": self._spec.model_id,
-            "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+            "messages": request.messages,
             "stream": False,
             "options": {
                 "temperature": request.temperature,

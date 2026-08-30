@@ -1,69 +1,155 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import time
-from dataclasses import dataclass
 from typing import Any
 
+import httpx
+import structlog
+
 from agent.models.agent import AgentConfig, AgentStep, AgentTrace
+from agent.tools.base import ToolRegistry
+
+log = structlog.get_logger()
 
 
-@dataclass
 class AgentLoop:
     """
     Core agent execution loop. No framework dependencies.
-
-    Cycle:
-      build_context -> generate -> check_tool_call -> execute_tool -> add_observation -> repeat
-    Terminates on: max_iterations, token_budget_exceeded, explicit finish, timeout.
+    Uses native function calling via the gateway.
     """
 
-    config: AgentConfig
+    def __init__(self, config: AgentConfig, tool_registry: ToolRegistry | None = None) -> None:
+        self._config = config
+        self._registry = tool_registry or ToolRegistry()
+        self._client = httpx.AsyncClient(base_url="http://localhost:8000", timeout=60.0)
 
     async def run(self, task: str) -> AgentTrace:
         trace = AgentTrace(task=task, started_at=time.time())
-        history: list[dict[str, Any]] = []
+        history: list[dict[str, Any]] = [{"role": "user", "content": task}]
 
-        for iteration in range(self.config.max_iterations):
-            step = await self._step(task, history, iteration, trace)
-            trace.steps.append(step)
-            history.append({"role": "assistant", "content": step.response})
+        log.info("agent.run.start", task=task[:80], max_iterations=self._config.max_iterations)
 
-            if step.is_terminal:
-                break
+        try:
+            async with asyncio.timeout(self._config.timeout_s):
+                for iteration in range(self._config.max_iterations):
+                    step = await self._step(history, iteration)
+                    trace.steps.append(step)
+                    trace.total_tokens += step.tokens_used
 
-            if step.tool_call:
-                result = await self._execute_tool(step.tool_call)
-                history.append(
-                    {
-                        "role": "tool",
-                        "content": str(result),
-                        "tool_call_id": step.tool_call.get("id", ""),
-                    }
-                )
-                trace.tool_calls_made += 1
+                    log.info(
+                        "agent.step",
+                        iteration=iteration,
+                        tokens=step.tokens_used,
+                        is_terminal=step.is_terminal,
+                        has_tool_call=step.tool_call is not None,
+                    )
 
-            if trace.total_tokens >= self.config.token_budget:
-                trace.termination_reason = "token_budget_exceeded"
-                break
-        else:
-            trace.termination_reason = "max_iterations"
+                    if step.is_terminal:
+                        trace.final_answer = step.response
+                        trace.termination_reason = "finished"
+                        break
+
+                    if step.tool_call:
+                        history.append({
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [step.tool_call],
+                        })
+                        result = await self._execute_tool(step.tool_call)
+                        history.append({
+                            "role": "tool",
+                            "tool_call_id": step.tool_call["id"],
+                            "content": json.dumps(result),
+                        })
+                        trace.tool_calls_made += 1
+                    else:
+                        history.append({"role": "assistant", "content": step.response})
+
+                    if trace.total_tokens >= self._config.token_budget:
+                        trace.termination_reason = "token_budget_exceeded"
+                        break
+                else:
+                    trace.termination_reason = "max_iterations"
+
+        except asyncio.TimeoutError:
+            trace.termination_reason = "timeout"
 
         trace.finished_at = time.time()
+        log.info(
+            "agent.run.complete",
+            termination_reason=trace.termination_reason,
+            steps=len(trace.steps),
+            total_tokens=trace.total_tokens,
+            tool_calls=trace.tool_calls_made,
+            duration_s=round(trace.finished_at - trace.started_at, 2),
+        )
         return trace
 
-    async def _step(self, task: str, history: list, iteration: int, trace: AgentTrace) -> AgentStep:
-        # TODO:
-        # 1. context_manager.build(task, history, memory, tools) -> context
-        # 2. gateway.generate(context) -> response
-        # 3. Parse response for tool_call or finish signal
-        # 4. Record token counts into trace
-        raise NotImplementedError
+    async def _step(self, history: list[dict[str, Any]], iteration: int) -> AgentStep:
+        tools = self._registry.list_schemas(
+            allowed=set(self._config.allowed_tools) if self._config.allowed_tools else None
+        )
+
+        payload: dict[str, Any] = {
+            "model": self._config.model,
+            "messages": [{"role": "system", "content": self._config.system_prompt}] + history,
+            "max_tokens": self._config.max_tokens_per_step,
+            "temperature": 0.7,
+        }
+
+        if tools:
+            payload["tools"] = [{"type": "function", "function": t} for t in tools]
+            payload["tool_choice"] = "auto"
+
+        start = time.time()
+        resp = await self._client.post("/v1/chat/completions", json=payload)
+        resp.raise_for_status()
+        data = resp.json()
+
+        latency_ms = (time.time() - start) * 1000
+        choice = data["choices"][0]
+        message = choice["message"]
+        usage = data.get("usage", {})
+        tokens_used = usage.get("total_tokens", 0)
+
+        tool_calls = choice.get("tool_calls")
+        if tool_calls:
+            return AgentStep(
+                iteration=iteration,
+                response=message.get("content") or "",
+                tool_call=tool_calls[0],
+                is_terminal=False,
+                tokens_used=tokens_used,
+                latency_ms=latency_ms,
+            )
+
+        return AgentStep(
+            iteration=iteration,
+            response=message.get("content", ""),
+            tool_call=None,
+            is_terminal=True,
+            tokens_used=tokens_used,
+            latency_ms=latency_ms,
+        )
 
     async def _execute_tool(self, tool_call: dict[str, Any]) -> Any:
-        # TODO:
-        # 1. Look up tool in registry
-        # 2. Validate permissions
-        # 3. Deserialise input against tool.input_schema
-        # 4. Call tool.execute(input)
-        # 5. Return ToolResult
-        raise NotImplementedError
+        name = tool_call.get("function", {}).get("name", "unknown")
+        raw_args = tool_call.get("function", {}).get("arguments", "{}")
+        args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+
+        log.info("agent.tool_call", tool=name, args=args)
+
+        try:
+            tool = self._registry.get(name)
+            input_model = tool.input_schema(**args)
+            result = await tool.execute(input_model)
+            return result.output if result.success else f"Error: {result.error}"
+        except KeyError:
+            return f"Tool '{name}' not found"
+        except Exception as e:
+            return f"Tool execution failed: {e}"
+
+    async def close(self) -> None:
+        await self._client.aclose()

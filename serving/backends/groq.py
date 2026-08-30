@@ -4,12 +4,16 @@ import json
 import time
 import uuid
 from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
+import structlog
 
 from gateway.models.registry import ModelSpec
 from gateway.models.request import LLMRequest, LLMResponse, Message, Role, StreamChunk, Usage
 from serving.backends.base import Backend
+
+log = structlog.get_logger()
 
 
 class GroqBackend(Backend):
@@ -23,23 +27,45 @@ class GroqBackend(Backend):
             timeout=30.0,
         )
 
+    def _serialise_messages(self, messages: list[Message]) -> list[dict[str, Any]]:
+        result = []
+        for m in messages:
+            msg: dict[str, Any] = {"role": m.role, "content": m.content}
+            if m.tool_call_id:
+                msg["tool_call_id"] = m.tool_call_id
+            if m.name:
+                msg["name"] = m.name
+            result.append(msg)
+        return result
+
     async def generate(self, request: LLMRequest) -> LLMResponse:
-        payload = {
+        payload: dict[str, Any] = {
             "model": self._spec.model_id,
-            "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+            "messages": request.messages,
             "temperature": request.temperature,
             "max_tokens": request.max_tokens,
             "stream": False,
         }
 
+        if request.tools:
+            payload["tools"] = request.tools
+            payload["tool_choice"] = request.tool_choice or "auto"
+
+        log.info("groq.request", model=self._spec.model_id, message_count=len(payload["messages"]))
+
         start = time.time()
         resp = await self._client.post("/chat/completions", json=payload)
+
+        if resp.status_code >= 400:
+            log.error("groq.error", status=resp.status_code, body=resp.text)
+
         resp.raise_for_status()
         data = resp.json()
         latency_ms = (time.time() - start) * 1000
 
         choice = data["choices"][0]
         usage = data.get("usage", {})
+        message = choice["message"]
 
         return LLMResponse(
             id=data.get("id", f"chatcmpl-{uuid.uuid4().hex[:8]}"),
@@ -49,9 +75,10 @@ class GroqBackend(Backend):
                     "index": 0,
                     "message": Message(
                         role=Role.ASSISTANT,
-                        content=choice["message"]["content"],
+                        content=message.get("content") or "",
                     ),
                     "finish_reason": choice.get("finish_reason", "stop"),
+                    "tool_calls": message.get("tool_calls"),
                 }
             ],
             usage=Usage(
@@ -67,9 +94,9 @@ class GroqBackend(Backend):
         )
 
     async def stream(self, request: LLMRequest) -> AsyncIterator[StreamChunk]:
-        payload = {
+        payload: dict[str, Any] = {
             "model": self._spec.model_id,
-            "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+            "messages": self._serialise_messages(request.messages),
             "temperature": request.temperature,
             "max_tokens": request.max_tokens,
             "stream": True,

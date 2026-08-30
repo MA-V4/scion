@@ -8,11 +8,17 @@ from typing import Any
 class AgentConfig:
     model: str = "fast"
     max_iterations: int = 20
+    max_tokens_per_step: int = 1024
     token_budget: int = 32768
     timeout_s: float = 120.0
     max_tool_calls: int = 50
     allowed_tools: list[str] = field(default_factory=list)
-    system_prompt: str = "You are a helpful, precise assistant. Use tools when needed."
+    system_prompt: str = (
+        "You are a helpful, precise assistant. "
+        "When you need to use a tool, respond with:\n"
+        "TOOL_CALL: {\"name\": \"tool_name\", \"input\": {...}}\n"
+        "When you have a final answer, respond normally without TOOL_CALL."
+    )
 
 
 @dataclass
