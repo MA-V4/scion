@@ -608,10 +608,10 @@ Scion is designed to produce concrete engineering conclusions, not just code. Th
 
 | Act | Focus | Status |
 |---|---|---|
-| Act 1 | Gateway: serving, routing, reliability, observability, benchmarks | In progress |
-| Act 2 | Agent: loop, tools, MCP, context manager, memory, security | Planned |
-| Act 3 | Evaluation: deterministic, trajectory, judge, regression CI, safety | Planned |
-| Act 4 | Scientific workflow, dashboard, infrastructure, documentation | Planned |
+| Act 1 | Gateway: serving, routing, reliability, observability, benchmarks | Completed |
+| Act 2 | Agent: loop, tools, MCP, context manager, memory, security | Completed |
+| Act 3 | Evaluation: deterministic, trajectory, judge, regression CI, safety | Completed |
+| Act 4 | Scientific workflow, dashboard, infrastructure, documentation | Completed |
 
 ---
 
