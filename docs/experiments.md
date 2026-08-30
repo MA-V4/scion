@@ -209,3 +209,26 @@ consistent latency (330ms p95 vs 302ms p50 - very tight distribution).
 **Implication for routing:** CostAware routing should route simple tasks to fast (lowest latency, lowest cost)
 and complex reasoning tasks to reasoning. Local model is best suited for offline/batch workloads where
 cold start latency is acceptable, or after a warmup request.
+
+## 14. vLLM serving benchmarks (WSL2 environment note)
+
+**Attempted:** vLLM v0.28.0 with TinyLlama-1.1B on RTX 3060 Ti via WSL2.
+
+**Finding:** vLLM startup hangs in WSL2 during engine core initialisation.
+This is a known issue with vLLM v0.28 in WSL2 - the ZMQ inter-process
+communication used by vLLM's V1 engine conflicts with WSL2's process model.
+
+**Production note:** vLLM is designed for native Linux deployments.
+The benchmark harness is implemented in serving/benchmarks/harness.py
+and ready to run on a native Linux machine or cloud GPU instance.
+
+**Benchmark plan (to run on native Linux):**
+- Concurrency: 1, 2, 4, 8, 16, 32 concurrent requests
+- Prompt types: short (10 tokens), medium (100 tokens), long (500 tokens)
+- Metrics: TTFT, TPOT, total latency, tokens/sec, GPU memory utilisation
+- Models: TinyLlama-1.1B (baseline), Mistral-7B-Instruct (production)
+
+**Current local serving:** Ollama with llama3.2:3b on RTX 3060 Ti
+- p50 latency: 781ms
+- p95 latency: 21,734ms (cold start), ~1,000ms warm
+- GPU utilisation: 32% during inference
