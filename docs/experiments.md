@@ -189,3 +189,23 @@ on harder numerical problems where mental arithmetic is insufficient.
 | CI regression detection | Passing |
 | Context overflow incidents | 0 |
 | Circuit breaker activations | Confirmed working |
+
+## 13. Per-model latency benchmark
+
+**Setup:** 10 requests per model, mixed task complexity, measured end-to-end from agent to response.
+
+**Results:**
+
+| Model | Provider | p50 | p95 | Mean |
+|---|---|---|---|---|
+| fast (GPT-OSS-20B) | Groq | 302ms | 330ms | 257ms |
+| local (Llama-3.2-3B) | Ollama/RTX 3060 Ti | 781ms | 21,734ms | 4,250ms |
+| reasoning (GPT-OSS-120B) | Groq | 437ms | 1,403ms | 432ms |
+
+**Finding:** The local model p95 of 21 seconds is caused by Ollama cold start (model loading into VRAM
+on first request). Subsequent requests drop to ~780ms p50. The fast Groq model has the lowest and most
+consistent latency (330ms p95 vs 302ms p50 - very tight distribution).
+
+**Implication for routing:** CostAware routing should route simple tasks to fast (lowest latency, lowest cost)
+and complex reasoning tasks to reasoning. Local model is best suited for offline/batch workloads where
+cold start latency is acceptable, or after a warmup request.
