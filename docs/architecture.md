@@ -33,3 +33,10 @@ trajectory, and scores both the path taken and the final answer.
 Final-answer accuracy alone is an insufficient metric. An agent that reaches the correct answer
 by taking 15 unnecessary tool calls, or by ignoring an error and guessing, is not a reliable agent.
 Trajectory scoring makes this visible.
+
+## Act 1 remaining items
+
+- Health polling: registry marks all models healthy statically, no background polling yet
+- Cost tracking to Postgres: currently Prometheus counters only, no DB persistence
+- Serving benchmarks: vLLM throughput experiments not yet run
+- Routing strategies: LeastLoaded, CostAware, HealthAware implemented but not tested or benchmarked
