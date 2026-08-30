@@ -13,6 +13,10 @@ from agent.tools.base import ToolRegistry
 from agent.mcp.server import MCPClient, MCPServer
 from agent.context.manager import ContextBudget, ContextManager
 
+from agent.memory.episodic import Episode, EpisodicMemory
+from agent.memory.semantic import SemanticMemory
+from agent.memory.working import WorkingMemory
+
 log = structlog.get_logger()
 
 
@@ -38,17 +42,29 @@ class AgentLoop:
             tool_results=4096,
             output_reserve=2048,
         ))
+        self._working = WorkingMemory()
+        self._episodic = EpisodicMemory()
+        self._semantic = SemanticMemory()
 
     async def run(self, task: str) -> AgentTrace:
         trace = AgentTrace(task=task, started_at=time.time())
         history: list[dict[str, Any]] = [{"role": "user", "content": task}]
+        self._working.clear()
+
+        # Retrieve relevant memory
+        episodic_context = self._episodic.summarise_for_context(task)
+        semantic_context = self._semantic.retrieve(task)
+        memory_entries = episodic_context + semantic_context
+
+        if memory_entries:
+            log.info("agent.memory.loaded", episodic=len(episodic_context), semantic=len(semantic_context))
 
         log.info("agent.run.start", task=task[:80], max_iterations=self._config.max_iterations)
 
         try:
             async with asyncio.timeout(self._config.timeout_s):
                 for iteration in range(self._config.max_iterations):
-                    step = await self._step(history, iteration)
+                    step = await self._step(history, iteration, memory_entries)
                     trace.steps.append(step)
                     trace.total_tokens += step.tokens_used
 
@@ -91,6 +107,18 @@ class AgentLoop:
             trace.termination_reason = "timeout"
 
         trace.finished_at = time.time()
+
+        # Store episode in memory
+        self._episodic.store(Episode(
+            task=task,
+            summary=trace.final_answer[:200] if trace.final_answer else "",
+            outcome=trace.termination_reason,
+            tool_calls_made=trace.tool_calls_made,
+            tokens_used=trace.total_tokens,
+            steps_taken=len(trace.steps),
+            created_at=trace.started_at,
+        ))
+
         log.info(
             "agent.run.complete",
             termination_reason=trace.termination_reason,
@@ -101,7 +129,7 @@ class AgentLoop:
         )
         return trace
 
-    async def _step(self, history: list[dict[str, Any]], iteration: int) -> AgentStep:
+    async def _step(self, history: list[dict[str, Any]], iteration: int, memory_entries: list[str] | None = None) -> AgentStep:
         tools = self._registry.list_schemas(
             allowed=set(self._config.allowed_tools) if self._config.allowed_tools else None
         )
@@ -110,6 +138,7 @@ class AgentLoop:
             system_prompt=self._config.system_prompt,
             history=history,
             tool_schemas=tools if tools else None,
+            memory_entries=memory_entries if memory_entries else None,
         )
 
         if iteration == 0:
