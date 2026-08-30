@@ -2,29 +2,26 @@ import asyncio
 from agent.models.agent import AgentConfig
 from agent.runtime.loop import AgentLoop
 from agent.tools.base import ToolRegistry
-from agent.tools.filesystem import FilesystemTool
-from agent.tools.scientific.calculator import CalculatorTool
+from agent.tools.scientific.arxiv import ArxivTool
 
 
 async def main():
     registry = ToolRegistry()
-    registry.register(CalculatorTool())
-    registry.register(FilesystemTool())
+    registry.register(ArxivTool())
 
     config = AgentConfig(
         model="fast",
         max_iterations=5,
         token_budget=8192,
         timeout_s=60.0,
-        allowed_tools=["calculator", "filesystem"],
+        allowed_tools=["arxiv"],
     )
 
     agent = AgentLoop(config=config, tool_registry=registry)
 
-    print("Testing filesystem tool...")
+    print("Testing ArxivTool...")
     trace = await agent.run(
-        "Write a file called hello.txt with the content Hello from Scion, "
-        "then read it back and confirm the content."
+        "Find 3 recent papers on transformer attention mechanisms and summarise their key contributions."
     )
 
     print(f"Termination reason: {trace.termination_reason}")
