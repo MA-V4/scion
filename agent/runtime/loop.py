@@ -11,6 +11,7 @@ import structlog
 from agent.models.agent import AgentConfig, AgentStep, AgentTrace
 from agent.tools.base import ToolRegistry
 from agent.mcp.server import MCPClient, MCPServer
+from agent.context.manager import ContextBudget, ContextManager
 
 log = structlog.get_logger()
 
@@ -29,7 +30,15 @@ class AgentLoop:
             allowed_tools=set(config.allowed_tools) if config.allowed_tools else None,
         ))
         self._client = httpx.AsyncClient(base_url="http://localhost:8000", timeout=60.0)
-        
+        self._context_manager = ContextManager(ContextBudget(
+            system_prompt=2048,
+            tool_definitions=4096,
+            recent_history=8192,
+            relevant_memory=2048,
+            tool_results=4096,
+            output_reserve=2048,
+        ))
+
     async def run(self, task: str) -> AgentTrace:
         trace = AgentTrace(task=task, started_at=time.time())
         history: list[dict[str, Any]] = [{"role": "user", "content": task}]
@@ -97,9 +106,18 @@ class AgentLoop:
             allowed=set(self._config.allowed_tools) if self._config.allowed_tools else None
         )
 
+        messages, usage = self._context_manager.build(
+            system_prompt=self._config.system_prompt,
+            history=history,
+            tool_schemas=tools if tools else None,
+        )
+
+        if iteration == 0:
+            log.info("context.usage", **usage)
+
         payload: dict[str, Any] = {
             "model": self._config.model,
-            "messages": [{"role": "system", "content": self._config.system_prompt}] + history,
+            "messages": messages,
             "max_tokens": self._config.max_tokens_per_step,
             "temperature": 0.7,
         }
@@ -116,8 +134,8 @@ class AgentLoop:
         latency_ms = (time.time() - start) * 1000
         choice = data["choices"][0]
         message = choice["message"]
-        usage = data.get("usage", {})
-        tokens_used = usage.get("total_tokens", 0)
+        usage_data = data.get("usage", {})
+        tokens_used = usage_data.get("total_tokens", 0)
 
         tool_calls = choice.get("tool_calls")
         if tool_calls:
