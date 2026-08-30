@@ -17,6 +17,8 @@ from agent.memory.episodic import Episode, EpisodicMemory
 from agent.memory.semantic import SemanticMemory
 from agent.memory.working import WorkingMemory
 
+from agent.security.injection_detector import scan
+
 log = structlog.get_logger()
 
 
@@ -194,7 +196,28 @@ class AgentLoop:
         log.info("agent.tool_call", tool=name, args=args)
 
         try:
-            return await self._mcp.call_tool(name, args)
+            result = await self._mcp.call_tool(name, args)
+            result_text = str(result)
+
+            scan_result = scan(result_text)
+            if scan_result.is_injection:
+                log.warning(
+                    "agent.security.injection_detected",
+                    tool=name,
+                    patterns=scan_result.injection_matches,
+                )
+                return f"[BLOCKED] Tool result from '{name}' was flagged for prompt injection and discarded."
+
+            if scan_result.has_secrets:
+                log.warning(
+                    "agent.security.secret_detected",
+                    tool=name,
+                    patterns=scan_result.secret_matches,
+                )
+                return f"[BLOCKED] Tool result from '{name}' contained potential secrets and was redacted."
+
+            return result
+
         except PermissionError as e:
             return f"Permission denied: {e}"
         except KeyError as e:
