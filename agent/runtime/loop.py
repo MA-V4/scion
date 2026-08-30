@@ -12,14 +12,14 @@ from agent.models.agent import AgentConfig, AgentStep, AgentTrace
 from agent.tools.base import ToolRegistry
 from agent.mcp.server import MCPClient, MCPServer
 from agent.context.manager import ContextBudget, ContextManager
-
 from agent.memory.episodic import Episode, EpisodicMemory
 from agent.memory.semantic import SemanticMemory
 from agent.memory.working import WorkingMemory
-
 from agent.security.injection_detector import scan
 
 log = structlog.get_logger()
+
+GUARDRAILS_ENABLED = True  # Set to True to re-enable
 
 
 class AgentLoop:
@@ -53,7 +53,6 @@ class AgentLoop:
         history: list[dict[str, Any]] = [{"role": "user", "content": task}]
         self._working.clear()
 
-        # Retrieve relevant memory
         episodic_context = self._episodic.summarise_for_context(task)
         semantic_context = self._semantic.retrieve(task)
         memory_entries = episodic_context + semantic_context
@@ -110,7 +109,6 @@ class AgentLoop:
 
         trace.finished_at = time.time()
 
-        # Store episode in memory
         self._episodic.store(Episode(
             task=task,
             summary=trace.final_answer[:200] if trace.final_answer else "",
@@ -197,24 +195,16 @@ class AgentLoop:
 
         try:
             result = await self._mcp.call_tool(name, args)
-            result_text = str(result)
 
-            scan_result = scan(result_text)
-            if scan_result.is_injection:
-                log.warning(
-                    "agent.security.injection_detected",
-                    tool=name,
-                    patterns=scan_result.injection_matches,
-                )
-                return f"[BLOCKED] Tool result from '{name}' was flagged for prompt injection and discarded."
-
-            if scan_result.has_secrets:
-                log.warning(
-                    "agent.security.secret_detected",
-                    tool=name,
-                    patterns=scan_result.secret_matches,
-                )
-                return f"[BLOCKED] Tool result from '{name}' contained potential secrets and was redacted."
+            if GUARDRAILS_ENABLED:
+                result_text = str(result)
+                scan_result = scan(result_text)
+                if scan_result.is_injection:
+                    log.warning("agent.security.injection_detected", tool=name, patterns=scan_result.injection_matches)
+                    return f"[BLOCKED] Tool result from '{name}' was flagged for prompt injection and discarded."
+                if scan_result.has_secrets:
+                    log.warning("agent.security.secret_detected", tool=name, patterns=scan_result.secret_matches)
+                    return f"[BLOCKED] Tool result from '{name}' contained potential secrets and was redacted."
 
             return result
 
