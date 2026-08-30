@@ -12,13 +12,14 @@ tasks:
 
   - id: general_002
     description: >
-      Search arXiv for one paper about language model evaluation and state its title.
-    allowed_tools: [arxiv]
+      Calculate the square root of 1764 and then calculate 42 squared.
+      Confirm that both answers are consistent with each other.
+    allowed_tools: [calculator]
     expected:
-      keywords: [title]
-      min_length: 30
-    max_steps: 2
-    evaluation_criteria: [tool_selection, groundedness]
+      contains_number: 42
+      min_length: 50
+    max_steps: 5
+    evaluation_criteria: [tool_selection, final_answer_correctness]
 
   - id: general_003
     description: >

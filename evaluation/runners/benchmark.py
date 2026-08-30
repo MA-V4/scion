@@ -21,6 +21,7 @@ from agent.tools.search import SearchTool
 from agent.tools.github import GitHubTool
 
 from evaluation.metrics.trajectory import TrajectoryScorer
+from evaluation.judges.llm_judge import LLMJudge, JudgementResult
 
 log = structlog.get_logger()
 
@@ -46,6 +47,8 @@ class TaskOutcome:
     termination_reason: str
     final_answer: str
     trajectory_score: float = 0.0
+    judge_score: float = 0.0
+    judge_correct: bool | None = None
     error: str | None = None
 
 
@@ -89,10 +92,21 @@ class BenchmarkResult:
         print(f"Mean steps: {self.mean_steps:.1f}")
         print(f"Mean tokens: {self.mean_tokens:.0f}")
         print(f"Tool error rate: {self.tool_error_rate:.1%}")
+
+        judge_results = [o for o in self.outcomes if o.judge_correct is not None]
+        if judge_results:
+            agreement = sum(
+                o.judge_correct == o.success for o in judge_results
+            ) / len(judge_results)
+            mean_judge = sum(o.judge_score for o in judge_results) / len(judge_results)
+            print(f"Judge mean score: {mean_judge:.2f}")
+            print(f"Judge/deterministic agreement: {agreement:.1%}")
+
         print(f"{chr(61)*50}")
         for o in self.outcomes:
             status = "PASS" if o.success else "FAIL"
-            print(f"  [{status}] {o.task_id} | steps={o.steps_taken} tokens={o.tokens_used} traj={o.trajectory_score:.2f} latency={o.latency_ms:.0f}ms")
+            judge = f"judge={o.judge_score:.2f}" if o.judge_correct is not None else "judge=n/a"
+            print(f"  [{status}] {o.task_id} | steps={o.steps_taken} traj={o.trajectory_score:.2f} {judge} tokens={o.tokens_used}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -133,6 +147,7 @@ class BenchmarkRunner:
         self._suite = suite
         self._tasks: list[BenchmarkTask] = []
         self._scorer = TrajectoryScorer()
+        self._judge = LLMJudge()
 
     def load_tasks(self) -> None:
         path = Path(self.SUITE_PATHS[self._suite])
@@ -182,6 +197,12 @@ class BenchmarkRunner:
                 final_answer=trace.final_answer or "",
                 expected=task.expected,
             )
+            judgement = await self._judge.judge(
+                task=task.description,
+                final_answer=trace.final_answer or "",
+                steps_taken=len(trace.steps),
+                tool_calls_made=trace.tool_calls_made,
+            )
 
             return TaskOutcome(
                 task_id=task.id,
@@ -193,6 +214,8 @@ class BenchmarkRunner:
                 termination_reason=trace.termination_reason,
                 final_answer=trace.final_answer or "",
                 trajectory_score=traj_score.aggregate,
+                judge_score=judgement.aggregate if judgement else 0.0,
+                judge_correct=judgement.correct if judgement else None,
             )
         except Exception as e:
             latency_ms = (time.time() - start) * 1000
